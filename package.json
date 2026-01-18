@@ -1,0 +1,17 @@
+{
+  "name": "flashcards",
+  "version": "0.1.0",
+  "description": "AI flashcards based on a pdf",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"Development scripts will be added by agents\"",
+    "build": "echo \"Build scripts will be added by agents\"",
+    "test": "echo \"Test scripts will be added by agents\""
+  },
+  "keywords": [
+    "saas",
+    "ai-powered"
+  ],
+  "author": "",
+  "license": "MIT"
+}
