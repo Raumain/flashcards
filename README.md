@@ -1,98 +1,103 @@
-# flashcards
+# 🩺 MedFlash
 
-AI flashcards based on a pdf
+AI-powered flashcard generator for medical students. Upload your PDF course materials and get study flashcards with relevant images and diagrams.
 
-## 🚀 Built with saas-forge
+## Features
 
-This project was initialized with [saas-forge](https://github.com/yourusername/saas-forge), an AI-powered SaaS builder.
+- 📄 **PDF Upload**: Drag & drop your medical course PDFs
+- 🤖 **AI Generation**: Gemini analyzes text AND images to create flashcards
+- 🖼️ **Visual Learning**: Relevant diagrams and schemas included in flashcards
+- 📥 **PDF Download**: Export flashcards as a printable PDF
+- 🚀 **No Account Needed**: Files processed in memory, nothing stored
 
-## 📋 Getting Started
+## Tech Stack
 
-### 1. Brief the Orchestrator
-
-Open GitHub Copilot Chat in VSCode and reference the orchestrator:
-
-```
-@#file:.github/agents/core/orchestrator.json
-
-AI flashcards based on a pdf
-
-[Add more details about features, target users, business model, etc.]
-```
-
-### 2. Follow the Orchestrator's Guidance
-
-The orchestrator will:
-- Analyze your requirements
-- Generate specialized agents
-- Create a detailed blueprint and roadmap
-- Guide you through implementation
-
-### 3. Build with AI Agents
-
-Delegate tasks to specialized agents:
-- Frontend Engineer: UI/UX implementation
-- Backend Engineer: API & business logic
-- Database Engineer: Schema & migrations
-- DevOps Engineer: Infrastructure & deployment
-
-## 📁 Project Structure
-
-```
-.github/
-├── agents/
-│   ├── core/              # Universal agents
-│   ├── templates/         # Agent templates
-│   └── project/           # Project-specific generated agents
-├── project/
-│   ├── brief.md          # Project brief
-│   ├── blueprint.md      # System design (generated)
-│   ├── roadmap.md        # Implementation plan (generated)
-│   └── history.json      # Task history
-└── workflows/            # GitHub Actions
-```
-
-## 🤖 Available Agents
-
-All agents are accessible via GitHub Copilot Chat:
-
-### Core Agents (Always Available)
-- `orchestrator.json` - Project manager & task delegator
-- `architect.md` - System designer
-- `code-reviewer.md` - PR reviewer
-- `qa-engineer.md` - Testing & quality assurance
-
-### Specialized Agents (Generated as Needed)
-- Frontend, Backend, Database, DevOps, Payments, AI, Mobile, etc.
-
-## 🛠️ Tech Stack
-
-The tech stack will be determined by the orchestrator based on your requirements.
-
-Default stack:
-- **Frontend**: React 19 + Vite + TypeScript + TanStack
-- **Backend**: Elysia + TypeScript
-- **Database**: PostgreSQL
-- **Auth**: Better-auth
+- **Framework**: TanStack Start + TanStack Router
+- **AI**: Google Gemini (via Vercel AI SDK)
+- **PDF Processing**: pdf-lib, pdf2pic, sharp
+- **PDF Generation**: jsPDF
+- **Styling**: Tailwind CSS v4
 - **Runtime**: Bun
-- **Infrastructure**: Docker + Docker Compose
 
-## 📝 Development Workflow
+## Getting Started
 
-1. **Ask orchestrator for next task**
-2. **Orchestrator delegates to specialist agent**
-3. **Agent implements feature autonomously**
-4. **Agent creates PR via GitHub MCP**
-5. **Code reviewer reviews PR**
-6. **Auto-merge on approval**
-7. **Repeat**
+### Prerequisites
 
-## 🔗 Resources
+- [Bun](https://bun.sh/) v1.0+
+- [Google AI API Key](https://ai.google.dev/)
+- **poppler-utils** (required for PDF to image conversion)
 
-- [saas-forge Documentation](https://github.com/yourusername/saas-forge)
-- [GitHub Copilot Chat](https://docs.github.com/en/copilot/github-copilot-chat)
-- [MCP Documentation](https://github.com/github/copilot-mcp)
+#### Installing poppler-utils
 
-## 📄 License
+```bash
+# Ubuntu/Debian
+sudo apt-get install poppler-utils
+
+# macOS
+brew install poppler
+
+# Fedora/RHEL
+sudo dnf install poppler-utils
+
+# Arch Linux
+sudo pacman -S poppler
+
+# Windows (via Chocolatey)
+choco install poppler
+
+# Docker
+# Add to your Dockerfile:
+# RUN apt-get update && apt-get install -y poppler-utils
+```
+
+> **Note**: The `pdftoppm` command (part of poppler-utils) is required to convert PDF pages to images before sending them to the AI. Without this, PDF processing will fail with an `ENOENT` error.
+
+### Installation
+
+\`\`\`bash
+# Install dependencies
+bun install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env and add your GOOGLE_API_KEY
+
+# Start development server
+bun run dev
+\`\`\`
+
+### Environment Variables
+
+\`\`\`env
+GOOGLE_API_KEY=your_gemini_api_key
+\`\`\`
+
+## Project Structure
+
+\`\`\`
+src/
+├── routes/           # TanStack Router pages
+├── components/       # React components
+│   ├── upload/       # PDF upload components
+│   ├── generation/   # AI generation UI
+│   └── flashcards/   # Flashcard display
+├── lib/              # Utilities
+│   └── prompts/      # AI prompts
+└── server/           # Server functions
+
+agents/               # AI agent instructions
+.github/project/      # Blueprint & roadmap
+\`\`\`
+
+## Development
+
+This project uses an agent-based development workflow:
+
+- [agents/](./agents/) - Specialized AI agents for different tasks
+- [.github/project/roadmap.md](./.github/project/roadmap.md) - Implementation plan
+- [.github/project/blueprint.md](./.github/project/blueprint.md) - Architecture
+- [progress.txt](./progress.txt) - Development log
+
+## License
 
 MIT

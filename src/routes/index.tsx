@@ -1,0 +1,435 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { FlashcardGrid } from '~/components/flashcards'
+import { GenerationProgress, type GenerationStep } from '~/components/generation'
+import {
+	DownloadButton,
+	ErrorAlert,
+	PulsingDot,
+	SkeletonFlashcardGrid,
+	SkeletonMetadata,
+} from '~/components/ui'
+import { PDFDropzone } from '~/components/upload'
+import type { Flashcard, GenerationMetadata, PageImage } from '~/lib/types/flashcard'
+
+/**
+ * Application state machine
+ * idle → uploading → processing → generating → complete
+ *                                            → error
+ */
+type AppState = 'idle' | 'uploading' | 'processing' | 'generating' | 'complete' | 'error'
+
+/**
+ * Maps app state to GenerationStep for the progress component
+ */
+function appStateToGenerationStep(state: AppState): GenerationStep | null {
+	switch (state) {
+		case 'idle':
+			return null
+		case 'uploading':
+			return 'uploading'
+		case 'processing':
+			return 'processing'
+		case 'generating':
+			return 'generating'
+		case 'complete':
+			return 'complete'
+		case 'error':
+			return null
+		default:
+			return null
+	}
+}
+
+export const Route = createFileRoute('/')({
+	component: Home,
+})
+
+function Home() {
+	// Core state
+	const [appState, setAppState] = useState<AppState>('idle')
+	const [selectedFile, setSelectedFile] = useState<File | null>(null)
+	const [uploadProgress, setUploadProgress] = useState(0)
+
+	// Generation state
+	const [flashcards, setFlashcards] = useState<Flashcard[]>([])
+	const [pageImages, setPageImages] = useState<PageImage[]>([])
+	const [metadata, setMetadata] = useState<GenerationMetadata | null>(null)
+	const [streamingText, setStreamingText] = useState('')
+	const [error, setError] = useState<string | null>(null)
+	const [isRetrying, setIsRetrying] = useState(false)
+	const [isLoadingResults, setIsLoadingResults] = useState(false)
+
+	// Refs for cancellation and retry
+	const abortControllerRef = useRef<AbortController | null>(null)
+	const lastFileRef = useRef<File | null>(null)
+
+	// Refs for focus management (accessibility)
+	const resultsHeadingRef = useRef<HTMLHeadingElement>(null)
+	const errorAlertRef = useRef<HTMLDivElement>(null)
+
+	/**
+	 * Resets all state to initial values
+	 */
+	const resetState = useCallback(() => {
+		setAppState('idle')
+		setSelectedFile(null)
+		setUploadProgress(0)
+		setFlashcards([])
+		setPageImages([])
+		setMetadata(null)
+		setStreamingText('')
+		setError(null)
+		if (abortControllerRef.current) {
+			abortControllerRef.current.abort()
+			abortControllerRef.current = null
+		}
+	}, [])
+
+	/**
+	 * Handles file selection and starts the generation pipeline
+	 */
+	const handleFileSelect = useCallback(
+		async (file: File) => {
+			// Validate file size before starting (20MB limit)
+			const MAX_FILE_SIZE_MB = 20
+			const maxBytes = MAX_FILE_SIZE_MB * 1024 * 1024
+			if (file.size > maxBytes) {
+				setError(
+					`La taille du fichier doit être inférieure à ${MAX_FILE_SIZE_MB}Mo. Votre fichier fait ${(file.size / 1024 / 1024).toFixed(1)}Mo.`,
+				)
+				setAppState('error')
+				return
+			}
+
+			// Validate file type
+			if (file.type !== 'application/pdf') {
+				setError('Veuillez télécharger un fichier PDF.')
+				setAppState('error')
+				return
+			}
+
+			// Reset previous state
+			resetState()
+			setSelectedFile(file)
+			lastFileRef.current = file
+			setAppState('uploading')
+
+			// Create abort controller for this generation
+			const abortController = new AbortController()
+			abortControllerRef.current = abortController
+			const signal = abortController.signal
+
+			try {
+				// Simulate upload progress with adaptive timing based on file size
+				// Smaller files = faster progress, larger files = slower progress
+				const fileSizeMB = file.size / (1024 * 1024)
+				const baseInterval = Math.min(150, Math.max(50, fileSizeMB * 15)) // 50-150ms based on size
+				const progressIncrement = Math.max(5, Math.min(15, 20 - fileSizeMB)) // 5-15% per tick
+
+				const progressInterval = setInterval(() => {
+					setUploadProgress((prev) => {
+						if (prev >= 90) {
+							clearInterval(progressInterval)
+							return 90
+						}
+						// Add slight randomness to feel more natural
+						const variance = Math.random() * 3 - 1.5
+						return Math.min(90, prev + progressIncrement + variance)
+					})
+				}, baseInterval)
+
+				// Estimated upload time based on file size (larger = longer)
+				const estimatedTime = Math.min(2000, Math.max(500, fileSizeMB * 200))
+				await new Promise((resolve) => setTimeout(resolve, estimatedTime))
+				clearInterval(progressInterval)
+				setUploadProgress(100)
+
+				// Check for cancellation
+				if (signal.aborted) {
+					return
+				}
+
+				// Move to processing state
+				setAppState('processing')
+				setStreamingText('Préparation du PDF pour analyse...\n')
+
+				// Build FormData for the server
+				const formData = new FormData()
+				formData.append('pdf', file)
+
+				// Simulate processing delay (PDF → images conversion)
+				await new Promise((resolve) => setTimeout(resolve, 1500))
+
+				if (signal.aborted) {
+					return
+				}
+
+				// Move to generating state
+				setAppState('generating')
+				setStreamingText((prev) => `${prev}Conversion des pages PDF en images...\n`)
+
+				// Check for cancellation before starting AI call
+				if (signal.aborted) {
+					return
+				}
+
+				// Call the non-streaming server function to get pageImages
+				const { generateFlashcards } = await import('~/server/functions/generate')
+
+				setStreamingText(
+					(prev) =>
+						`${prev}Analyse du contenu médical avec l'IA...\nGénération des flashcards...\n`,
+				)
+
+				// Get the complete result with page images
+				// Wrap in a race with abort signal to enable cancellation
+				const result = await Promise.race([
+					generateFlashcards({ data: formData }),
+					new Promise<never>((_, reject) => {
+						// Check if already aborted
+						if (signal.aborted) {
+							reject(new DOMException('Generation cancelled by user', 'AbortError'))
+							return
+						}
+						// Listen for future abort
+						signal.addEventListener('abort', () => {
+							reject(new DOMException('Generation cancelled by user', 'AbortError'))
+						})
+					}),
+				])
+
+				// Double-check cancellation after await (in case abort happened during the call)
+				if (signal.aborted) {
+					return
+				}
+
+				if (!result.success) {
+					throw new Error(result.error.message)
+				}
+
+				// Set all data including page images
+				setFlashcards(result.data.flashcards)
+				setMetadata(result.data.metadata)
+				if (result.data.pageImages) {
+					setPageImages(result.data.pageImages)
+				}
+
+				// Final update
+				setStreamingText(
+					(prev) =>
+						`${prev}✓ Terminé : ${result.data.flashcards.length} flashcards générées à partir de ${result.data.metadata.totalConcepts} concepts\n`,
+				)
+				setAppState('complete')
+				setIsLoadingResults(false)
+			} catch (err) {
+				// Handle user cancellation - silently return without showing error
+				if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+					return
+				}
+
+				const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
+				setError(errorMessage)
+				setStreamingText((prev) => `${prev}❌ Error: ${errorMessage}\n`)
+				setAppState('error')
+			}
+		},
+		[resetState],
+	)
+
+	/**
+	 * Cancels the current generation
+	 *
+	 * Note: This aborts the client-side operation and resets UI state.
+	 * Server-side streaming will continue until completion, but results
+	 * will be discarded. True server-side cancellation would require
+	 * additional infrastructure (e.g., AbortSignal propagation to the
+	 * AI SDK, which is not currently supported in TanStack Start generators).
+	 */
+	const handleCancelGeneration = useCallback(() => {
+		if (abortControllerRef.current) {
+			abortControllerRef.current.abort()
+		}
+		resetState()
+	}, [resetState])
+
+	/**
+	 * Handles retry after an error
+	 */
+	const handleRetry = useCallback(() => {
+		if (!lastFileRef.current) return
+		setIsRetrying(true)
+		handleFileSelect(lastFileRef.current).finally(() => {
+			setIsRetrying(false)
+		})
+	}, [handleFileSelect])
+
+	/**
+	 * Dismisses the error and returns to idle state
+	 */
+	const handleDismissError = useCallback(() => {
+		setError(null)
+		setAppState('idle')
+	}, [])
+
+	/**
+	 * Focus management for accessibility
+	 * Moves focus to results heading when generation completes,
+	 * or to error alert when an error occurs
+	 */
+	useEffect(() => {
+		if (appState === 'complete' && !isLoadingResults && flashcards.length > 0) {
+			resultsHeadingRef.current?.focus()
+		}
+	}, [appState, isLoadingResults, flashcards.length])
+
+	useEffect(() => {
+		if (appState === 'error' && error) {
+			errorAlertRef.current?.focus()
+		}
+	}, [appState, error])
+
+	// Derived state
+	const generationStep = appStateToGenerationStep(appState)
+	const isUploading = appState === 'uploading'
+	const isComplete = appState === 'complete'
+	const isError = appState === 'error'
+	const isGenerating = appState === 'generating' || appState === 'processing'
+
+	return (
+		<main className="min-h-screen bg-gray-50 py-8 sm:py-12 px-4">
+			<div className={`mx-auto ${isComplete ? 'max-w-5xl' : 'max-w-2xl'}`}>
+				<header className="text-center mb-6 sm:mb-8">
+					<h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">MedFlash</h1>
+					<p className="text-base sm:text-lg text-gray-600">
+						Générateur de flashcards médicales par IA
+					</p>
+				</header>
+
+				{/* Error Alert - Show when error occurs */}
+				{isError && error && (
+					<ErrorAlert
+						ref={errorAlertRef}
+						error={error}
+						onRetry={handleRetry}
+						onDismiss={handleDismissError}
+						isRetrying={isRetrying}
+						className="mb-6"
+					/>
+				)}
+
+				{/* Upload Section - Show when idle or error */}
+				{(appState === 'idle' || isError) && (
+					<section aria-labelledby="upload-section">
+						<h2 id="upload-section" className="sr-only">
+							Télécharger un PDF
+						</h2>
+						<PDFDropzone
+							onFileSelect={handleFileSelect}
+							isUploading={isUploading}
+							uploadProgress={uploadProgress}
+						/>
+					</section>
+				)}
+
+				{/* Generation Progress - Show during upload/processing/generating */}
+				{generationStep && !isError && (
+					<section aria-labelledby="generation-section">
+						<h2 id="generation-section" className="sr-only">
+							Progression de la génération
+						</h2>
+						<GenerationProgress
+							currentStep={generationStep}
+							streamingText={streamingText}
+							onCancel={isGenerating || isUploading ? handleCancelGeneration : undefined}
+							isComplete={isComplete}
+							error={isError ? (error ?? undefined) : undefined}
+						/>
+					</section>
+				)}
+
+				{/* File Info - Show after selection before generation starts */}
+				{selectedFile && appState === 'idle' && (
+					<div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
+						<p className="text-sm text-gray-600">
+							<span className="font-medium text-gray-900">Sélectionné :</span> {selectedFile.name}
+						</p>
+						<p className="text-xs text-gray-500 mt-1">
+							Taille : {(selectedFile.size / 1024 / 1024).toFixed(2)} Mo
+						</p>
+					</div>
+				)}
+
+				{/* Loading Results State - Show skeleton while transitioning */}
+				{isComplete && isLoadingResults && (
+					<>
+						<div className="mt-6 flex items-center gap-2 text-sm text-blue-600">
+							<PulsingDot />
+							<span>Préparation de vos flashcards...</span>
+						</div>
+						<SkeletonMetadata className="mt-4" />
+						<SkeletonFlashcardGrid count={6} className="mt-8" />
+					</>
+				)}
+
+				{/* Metadata Summary - Show after completion */}
+				{isComplete && !isLoadingResults && metadata && (
+					<div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+						<p className="text-sm text-blue-800">
+							<span className="font-medium">Sujet :</span> {metadata.subject}
+						</p>
+						<p className="text-sm text-blue-800 mt-1">
+							<span className="font-medium">Concepts identifiés :</span> {metadata.totalConcepts}
+						</p>
+						{metadata.recommendations && (
+							<p className="text-xs text-blue-600 mt-2">{metadata.recommendations}</p>
+						)}
+					</div>
+				)}
+
+				{/* Action Buttons - Show after completion */}
+				{isComplete && !isLoadingResults && flashcards.length > 0 && (
+					<div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+						<DownloadButton flashcards={flashcards} pageImages={pageImages} />
+						<button
+							type="button"
+							onClick={resetState}
+							className="px-6 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+						>
+							Uploader un autre PDF
+						</button>
+					</div>
+				)}
+
+				{/* Flashcard Grid - Show after generation complete */}
+				{isComplete && !isLoadingResults && flashcards.length > 0 && (
+					<section aria-labelledby="flashcards-section" id="main-content" className="mt-8">
+						<h2
+							id="flashcards-section"
+							ref={resultsHeadingRef}
+							tabIndex={-1}
+							className="text-xl font-semibold text-gray-900 mb-4 outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
+						>
+							Flashcards générées ({flashcards.length})
+						</h2>
+						<FlashcardGrid flashcards={flashcards} pageImages={pageImages} />
+					</section>
+				)}
+
+				{/* Empty State - Show if complete but no flashcards */}
+				{isComplete && !isLoadingResults && flashcards.length === 0 && (
+					<div className="mt-6 p-8 bg-white rounded-lg border border-gray-200 text-center">
+						<p className="text-gray-600">Aucune flashcard n'a été générée à partir de ce PDF.</p>
+						<button
+							type="button"
+							onClick={resetState}
+							className="mt-4 px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
+						>
+							Essayer un autre PDF
+						</button>
+					</div>
+				)}
+			</div>
+		</main>
+	)
+}
