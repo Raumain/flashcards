@@ -160,7 +160,9 @@ export const FlashcardItem = memo(function FlashcardItem({
 
 					{/* Answer */}
 					<div className="shrink-0">
-						<p className="text-gray-900 font-medium text-sm leading-relaxed">{flashcard.back.answer}</p>
+						<p className="text-gray-900 font-medium text-sm leading-relaxed">
+							{flashcard.back.answer}
+						</p>
 
 						{/* Details */}
 						{flashcard.back.details && (

@@ -63,6 +63,8 @@ function Home() {
 	// Refs for cancellation and retry
 	const abortControllerRef = useRef<AbortController | null>(null)
 	const lastFileRef = useRef<File | null>(null)
+	const isProcessingRef = useRef(false)
+	const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
 	// Refs for focus management (accessibility)
 	const resultsHeadingRef = useRef<HTMLHeadingElement>(null)
@@ -80,6 +82,11 @@ function Home() {
 		setMetadata(null)
 		setStreamingText('')
 		setError(null)
+		isProcessingRef.current = false
+		if (debounceTimeoutRef.current) {
+			clearTimeout(debounceTimeoutRef.current)
+			debounceTimeoutRef.current = null
+		}
 		if (abortControllerRef.current) {
 			abortControllerRef.current.abort()
 			abortControllerRef.current = null
@@ -88,9 +95,25 @@ function Home() {
 
 	/**
 	 * Handles file selection and starts the generation pipeline
+	 * Includes debouncing and duplicate request prevention
 	 */
 	const handleFileSelect = useCallback(
 		async (file: File) => {
+			// Prevent duplicate submissions while processing
+			if (isProcessingRef.current) {
+				console.log('[handleFileSelect] Request ignored - already processing')
+				return
+			}
+
+			// Clear any pending debounce
+			if (debounceTimeoutRef.current) {
+				clearTimeout(debounceTimeoutRef.current)
+				debounceTimeoutRef.current = null
+			}
+
+			// Mark as processing immediately to prevent rapid re-submissions
+			isProcessingRef.current = true
+
 			// Validate file size before starting (20MB limit)
 			const MAX_FILE_SIZE_MB = 20
 			const maxBytes = MAX_FILE_SIZE_MB * 1024 * 1024
@@ -99,6 +122,7 @@ function Home() {
 					`La taille du fichier doit être inférieure à ${MAX_FILE_SIZE_MB}Mo. Votre fichier fait ${(file.size / 1024 / 1024).toFixed(1)}Mo.`,
 				)
 				setAppState('error')
+				isProcessingRef.current = false
 				return
 			}
 
@@ -106,11 +130,13 @@ function Home() {
 			if (file.type !== 'application/pdf') {
 				setError('Veuillez télécharger un fichier PDF.')
 				setAppState('error')
+				isProcessingRef.current = false
 				return
 			}
 
-			// Reset previous state
+			// Reset previous state (but keep processing flag true)
 			resetState()
+			isProcessingRef.current = true // Re-set after resetState clears it
 			setSelectedFile(file)
 			lastFileRef.current = file
 			setAppState('uploading')
@@ -147,6 +173,7 @@ function Home() {
 
 				// Check for cancellation
 				if (signal.aborted) {
+					isProcessingRef.current = false
 					return
 				}
 
@@ -162,6 +189,7 @@ function Home() {
 				await new Promise((resolve) => setTimeout(resolve, 1500))
 
 				if (signal.aborted) {
+					isProcessingRef.current = false
 					return
 				}
 
@@ -171,6 +199,7 @@ function Home() {
 
 				// Check for cancellation before starting AI call
 				if (signal.aborted) {
+					isProcessingRef.current = false
 					return
 				}
 
@@ -201,6 +230,7 @@ function Home() {
 
 				// Double-check cancellation after await (in case abort happened during the call)
 				if (signal.aborted) {
+					isProcessingRef.current = false
 					return
 				}
 
@@ -222,9 +252,11 @@ function Home() {
 				)
 				setAppState('complete')
 				setIsLoadingResults(false)
+				isProcessingRef.current = false
 			} catch (err) {
 				// Handle user cancellation - silently return without showing error
 				if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+					isProcessingRef.current = false
 					return
 				}
 
@@ -232,6 +264,7 @@ function Home() {
 				setError(errorMessage)
 				setStreamingText((prev) => `${prev}❌ Error: ${errorMessage}\n`)
 				setAppState('error')
+				isProcessingRef.current = false
 			}
 		},
 		[resetState],
@@ -250,6 +283,7 @@ function Home() {
 		if (abortControllerRef.current) {
 			abortControllerRef.current.abort()
 		}
+		isProcessingRef.current = false
 		resetState()
 	}, [resetState])
 

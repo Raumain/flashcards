@@ -21,16 +21,16 @@ describe('Loading Components', () => {
 	describe('Skeleton', () => {
 		it('should render with default classes', () => {
 			const { container } = render(<Skeleton />)
-			const skeleton = container.querySelector('[role="status"]')
+			const skeleton = container.querySelector('[aria-label="Loading..."]')
 			expect(skeleton).toBeDefined()
-			expect(skeleton?.className).toContain('animate-pulse')
-			expect(skeleton?.className).toContain('bg-gray-200')
+			expect(skeleton?.classList.contains('animate-pulse')).toBe(true)
+			expect(skeleton?.classList.contains('bg-gray-200')).toBe(true)
 		})
 
 		it('should accept custom className', () => {
 			const { container } = render(<Skeleton className="custom-class" />)
-			const skeleton = container.querySelector('[role="status"]')
-			expect(skeleton?.className).toContain('custom-class')
+			const skeleton = container.querySelector('[aria-label="Loading..."]')
+			expect(skeleton?.classList.contains('custom-class')).toBe(true)
 		})
 	})
 

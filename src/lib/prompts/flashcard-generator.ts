@@ -81,7 +81,7 @@ Retourne UNIQUEMENT du JSON valide correspondant exactement à ce schéma (pas d
 - Chaque flashcard doit tester UN concept
 - Utilise la terminologie médicale standard en français
 - INCLUS les images/schémas quand ils sont pertinents
-- RESPECTE le minimum de 3 cartes par niveau de difficulté`;
+- RESPECTE le minimum de 3 cartes par niveau de difficulté`
 
 /**
  * Prompt for clarifying ambiguous content
@@ -90,7 +90,7 @@ export const CLARIFICATION_PROMPT = `Le contenu précédent était ambigu ou peu
 Veuillez :
 1. Vous concentrer sur les portions les plus lisibles
 2. Signaler toute information incertaine
-3. Prioriser le contenu factuel sur les interprétations`;
+3. Prioriser le contenu factuel sur les interprétations`
 
 /**
  * Prompt for expanding on a topic
@@ -98,7 +98,7 @@ Veuillez :
 export const EXPANSION_PROMPT = `Génère des flashcards supplémentaires pour une compréhension plus approfondie :
 1. Ajoute des concepts connexes non couverts dans les cartes initiales
 2. Inclus des applications cliniques et des scénarios réels
-3. Ajoute des cartes de comparaison entre concepts similaires`;
+3. Ajoute des cartes de comparaison entre concepts similaires`
 
 /**
  * Prompt for simplifying complex topics
@@ -106,4 +106,4 @@ export const EXPANSION_PROMPT = `Génère des flashcards supplémentaires pour u
 export const SIMPLIFICATION_PROMPT = `Simplifie le contenu complexe suivant :
 1. Décompose en concepts plus petits et digestes
 2. Utilise des analogies quand c'est utile
-3. Concentre-toi sur la compréhension fondamentale avant les détails`;
+3. Concentre-toi sur la compréhension fondamentale avant les détails`

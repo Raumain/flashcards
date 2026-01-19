@@ -4,7 +4,7 @@ import { afterEach, vi } from 'vitest'
 
 // Cleanup after each test
 afterEach(() => {
-  cleanup()
+	cleanup()
 })
 
 // Mock environment variables
@@ -21,26 +21,24 @@ global.URL.revokeObjectURL = vi.fn()
 // Only suppresses specific known messages to avoid hiding real errors
 const originalError = console.error
 const SUPPRESSED_PATTERNS = [
-  'React error boundary',
-  'Warning: ReactDOM.render',
-  'Warning: An update to .* inside a test was not wrapped in act',
-  'Warning: Cannot update a component',
+	'React error boundary',
+	'Warning: ReactDOM.render',
+	'Warning: An update to .* inside a test was not wrapped in act',
+	'Warning: Cannot update a component',
 ]
 
 beforeAll(() => {
-  console.error = (...args: unknown[]) => {
-    const message = typeof args[0] === 'string' ? args[0] : ''
-    const shouldSuppress = SUPPRESSED_PATTERNS.some(pattern =>
-      new RegExp(pattern).test(message)
-    )
+	console.error = (...args: unknown[]) => {
+		const message = typeof args[0] === 'string' ? args[0] : ''
+		const shouldSuppress = SUPPRESSED_PATTERNS.some((pattern) => new RegExp(pattern).test(message))
 
-    if (shouldSuppress) {
-      return
-    }
-    originalError.call(console, ...args)
-  }
+		if (shouldSuppress) {
+			return
+		}
+		originalError.call(console, ...args)
+	}
 })
 
 afterAll(() => {
-  console.error = originalError
+	console.error = originalError
 })

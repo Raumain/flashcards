@@ -679,3 +679,64 @@ Changes:
      - Images only rendered on back (answer) pages in PDF
 Notes: PDF images from source document now only appear with answers, not questions
 ---
+[BACKEND-AGENT] [2026-01-19 00:53]
+Task: TASK 2 - Add Rate Limiting to Server Function (SEC-003)
+Status: ✅ Complete
+Files Modified:
+  - src/server/functions/generate.ts
+Implementation:
+  1. Per-IP rate limiting (10 requests/minute, sliding window)
+     - In-memory Map-based rate limiter
+     - Automatic cleanup of stale entries every 5 minutes
+  2. Concurrency control (max 2 concurrent requests per IP)
+     - Request queuing when limit exceeded
+     - Promise-based slot acquisition/release
+  3. 429 response when rate limited
+     - Returns RATE_LIMITED error code with retryAfter seconds
+     - French-localized error message
+  4. Applied to both endpoints:
+     - generateFlashcards (standard endpoint)
+     - generateFlashcardsStreaming (streaming endpoint)
+Notes: In-memory solution suitable for single-instance deployment. Replace with Redis for horizontal scaling.
+---
+---
+
+[BACKEND-AGENT] [2026-01-19 00:59]
+Task: TASK 3 - Add Input Size Validation for Base64 Images (SEC-004)
+Status: ✅ Complete
+Files Modified:
+  - src/lib/gemini.ts
+  - src/server/functions/generate.ts
+  - src/components/ui/ErrorAlert.tsx
+Implementation:
+  1. Added MAX_PAYLOAD_SIZE_BYTES constant (50MB limit)
+  2. Created validatePayloadSize() function
+     - Calculates total base64 payload size
+     - Logs payload size for monitoring
+     - Throws GeminiError with PAYLOAD_TOO_LARGE code if exceeded
+  3. Added validation to both Gemini functions:
+     - generateFlashcardsFromImages
+     - streamFlashcardsFromImages
+  4. Added PAYLOAD_TOO_LARGE to error handling chain:
+     - GeminiError code
+     - APIErrorCode type
+     - ErrorAlert parsing and icon display
+  5. French-localized error message with helpful suggestion
+Notes: Prevents memory exhaustion and API timeout from large PDF payloads
+---
+
+[BACKEND-AGENT] [2026-01-19 01:04]
+Task: TASK 4 - Batch PDF Processing for Memory Optimization
+Status: ✅ Already Implemented
+Files Reviewed:
+  - src/lib/pdf-processor.ts
+Finding:
+  Batch processing was already implemented in the codebase:
+  1. BATCH_SIZE = 5 (more conservative than recommended 10)
+  2. Pages processed in batches using Promise.all on chunks
+  3. PNG files cleaned up immediately after JPEG conversion
+  4. Batch progress logging for monitoring
+  5. Memory-efficient approach already in place
+Code Location: src/lib/pdf-processor.ts lines 248-275
+Notes: No changes needed - implementation already meets or exceeds requirements
+---

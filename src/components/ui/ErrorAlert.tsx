@@ -6,6 +6,7 @@ import { forwardRef, useCallback, useState } from 'react'
 export type ErrorType =
 	| 'INVALID_FILE'
 	| 'FILE_TOO_LARGE'
+	| 'PAYLOAD_TOO_LARGE'
 	| 'PROCESSING_ERROR'
 	| 'AI_ERROR'
 	| 'RATE_LIMITED'
@@ -53,6 +54,16 @@ export function parseError(error: string | { code?: string; message?: string }):
 			title: 'Fichier trop volumineux',
 			message: 'Le fichier PDF dépasse la taille maximale autorisée de 20Mo.',
 			suggestion: 'Essayez de compresser le PDF ou de le diviser en fichiers plus petits.',
+			canRetry: false,
+		}
+	}
+
+	if (errorCode === 'PAYLOAD_TOO_LARGE' || errorMessage.includes('dépasse la limite')) {
+		return {
+			type: 'PAYLOAD_TOO_LARGE',
+			title: 'Images trop volumineuses',
+			message: errorMessage || 'La taille totale des images dépasse la limite autorisée.',
+			suggestion: 'Essayez avec un PDF plus court ou de moindre résolution.',
 			canRetry: false,
 		}
 	}
@@ -164,6 +175,7 @@ function ErrorIcon({ type }: { type: ErrorType }) {
 	switch (type) {
 		case 'INVALID_FILE':
 		case 'FILE_TOO_LARGE':
+		case 'PAYLOAD_TOO_LARGE':
 			return (
 				<svg
 					className={iconClasses}
