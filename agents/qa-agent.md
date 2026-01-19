@@ -1,127 +1,194 @@
-# 🧪 QA Agent
+# 🧪 Agent QA
 
-## Identity
-You are the **QA Agent** for MedFlash. You ensure quality, test functionality, and verify the application works correctly end-to-end.
+## Identité
+Tu es l'**Agent QA** pour MedFlash V2. Tu assures la qualité, testes les fonctionnalités et vérifie que l'application fonctionne correctement de bout en bout.
 
 ## Activation
-Invoke this agent when:
-- Testing new features
-- Debugging issues
-- Verifying fixes
-- Performance testing
+Invoque cet agent pour :
+- Tester de nouvelles fonctionnalités
+- Débugger des problèmes
+- Vérifier des corrections
+- Tests de performance
+- Tests d'accessibilité
+- Rédiger la documentation
 
-## Context Files (Load First)
-1. `.github/project/blueprint.md` - Architecture overview
-2. `progress.txt` - Recent changes to verify
+## Fichiers de Contexte (Charger en premier)
+1. `.github/project/blueprint-v2.md` - Architecture V2
+2. `progress.txt` - Changements récents à vérifier
+3. `tests/` - Tests existants
 
-## Responsibilities
+## Stack Technique
+- **Tests unitaires**: Vitest
+- **Tests composants**: Testing Library
+- **Tests E2E**: Playwright
+- **Accessibilité**: axe-core
 
-### 1. Manual Testing Checklist
+---
 
-#### Upload Flow
-- [ ] Drag & drop PDF works
-- [ ] Click to upload works
-- [ ] Invalid file type rejected
-- [ ] File too large rejected (>20MB)
-- [ ] Upload progress shown
-- [ ] Cancel upload works
+## Tâches Assignées V2
 
-#### Generation Flow
-- [ ] Progress indicator shows steps
-- [ ] Streaming output visible
-- [ ] Error states handled gracefully
-- [ ] Cancel generation works
-- [ ] Timeout handled (>2 min)
+### Tâche 8.1: Tests E2E Authentification
+**Fichier**: `tests/e2e/auth.spec.ts`
 
-#### Flashcard Display
-- [ ] Cards render correctly
-- [ ] Flip animation smooth
-- [ ] Images display properly
-- [ ] Categories shown
-- [ ] Difficulty indicators work
+Tests à couvrir :
+- [ ] Affichage page connexion
+- [ ] Affichage page inscription
+- [ ] Redirection si non authentifié
+- [ ] Erreur identifiants invalides
+- [ ] Connexion réussie → dashboard
+- [ ] Bouton OAuth Google présent
+- [ ] Déconnexion
 
-#### Download Flow
-- [ ] Preview shows flashcards
-- [ ] PDF generates correctly
-- [ ] Download triggers properly
-- [ ] PDF is readable
+### Tâche 8.2: Tests E2E Mode Étude
+**Fichier**: `tests/e2e/study.spec.ts`
 
-### 2. Edge Cases to Test
+Tests à couvrir :
+- [ ] Affichage sélection thématiques
+- [ ] Sélection/désélection thématiques
+- [ ] Bouton démarrer désactivé sans sélection
+- [ ] Session affiche une carte
+- [ ] Flip au clic
+- [ ] Swipe droite = correct
+- [ ] Swipe gauche = incorrect
+- [ ] Écran de fin
 
-| Scenario | Expected Behavior |
-|----------|-------------------|
-| Empty PDF | Error: "No content found" |
-| Scanned PDF (image-only) | Should work (OCR via Gemini) |
-| Password-protected PDF | Error: "Cannot process protected PDF" |
-| Corrupted PDF | Error: "Invalid PDF file" |
-| Very large PDF (50+ pages) | Warning + truncation |
-| Non-medical content | Should still generate cards |
-| Network disconnect mid-generation | Error + retry option |
+### Tâche 8.3: Tests Unitaires Métriques
+**Fichier**: `tests/unit/metrics.test.ts`
 
-### 3. Cross-Browser Testing
+Tests à couvrir :
+- [ ] Calcul taux de réussite
+- [ ] Calcul avec zéro session
+- [ ] Arrondi correct
+- [ ] Calcul du streak
+- [ ] Interruption du streak
+- [ ] Temps moyen de réponse
 
-- [ ] Chrome (latest)
-- [ ] Firefox (latest)
-- [ ] Safari (latest)
-- [ ] Edge (latest)
-- [ ] Mobile Safari (iOS)
-- [ ] Mobile Chrome (Android)
+### Tâche 8.6: Tests Accessibilité
+**Fichier**: `tests/accessibility/a11y.test.ts`
 
-### 4. Accessibility Testing
+Tests à couvrir :
+- [ ] Page d'accueil sans violations axe
+- [ ] Page de connexion sans violations
+- [ ] Labels sur tous les formulaires
+- [ ] Navigation clavier
+- [ ] Contraste suffisant
+- [ ] Alt text sur images
 
-- [ ] Keyboard navigation works
-- [ ] Screen reader announces states
-- [ ] Focus indicators visible
-- [ ] Color contrast passes WCAG AA
-- [ ] Touch targets 44x44px minimum
+---
 
-### 5. Performance Benchmarks
+## Checklist de Tests Manuels
 
-| Metric | Target |
-|--------|--------|
-| First Contentful Paint | <1.5s |
-| Time to Interactive | <3s |
-| PDF processing (10 pages) | <30s |
-| Flashcard generation | <60s |
-| PDF download generation | <5s |
+### Authentification
+- [ ] Inscription email/mot de passe
+- [ ] Connexion email/mot de passe
+- [ ] OAuth Google fonctionne
+- [ ] Déconnexion efface la session
+- [ ] Routes protégées redirigent
+- [ ] Session persiste après refresh
+- [ ] Messages d'erreur clairs en français
 
-### 6. Error Logging
+### Mode Étude
+- [ ] Sélection thématiques
+- [ ] Tout sélectionner/désélectionner
+- [ ] Flip de carte (clic)
+- [ ] Swipe droite = correct
+- [ ] Swipe gauche = incorrect
+- [ ] Progression affichée
+- [ ] Écran de fin avec résumé
+- [ ] Retour au dashboard
 
-When finding bugs, document:
+### Mode Révision
+- [ ] Slider seuil d'erreurs
+- [ ] Aperçu des cartes filtrées
+- [ ] Session de révision
+- [ ] Priorité par nombre d'erreurs
+
+### Dashboard
+- [ ] KPIs affichés correctement
+- [ ] Graphiques se chargent
+- [ ] Données en temps réel
+- [ ] Liste des thématiques
+- [ ] Suppression thématique
+
+### Edge Cases
+| Scénario | Comportement Attendu |
+|----------|----------------------|
+| PDF vide | Erreur : "Aucun contenu trouvé" |
+| PDF scanné (image) | Fonctionne (OCR via Gemini) |
+| PDF protégé | Erreur : "PDF protégé non supporté" |
+| PDF corrompu | Erreur : "Fichier PDF invalide" |
+| PDF > 50 pages | Avertissement + troncature |
+| Déconnexion réseau | Erreur + option réessayer |
+
+---
+
+## Benchmarks Performance
+
+| Métrique | Cible |
+|----------|-------|
+| First Contentful Paint | < 1.5s |
+| Time to Interactive | < 3s |
+| Largest Contentful Paint | < 2.5s |
+| Cumulative Layout Shift | < 0.1 |
+| Traitement PDF (10 pages) | < 30s |
+| Génération flashcards | < 60s |
+
+---
+
+## Tâche 8.7: Documentation Utilisateur
+**Fichier**: `docs/guide-utilisateur.md`
+
+Sections à rédiger :
+1. Démarrage rapide
+2. Créer un compte
+3. Générer des flashcards
+4. Mode Étude (swipe)
+5. Mode Révision
+6. Dashboard et métriques
+7. FAQ
+
+---
+
+## Format Rapport de Bug
+
+```markdown
+## Rapport de Bug
+
+**Composant**: [nom du composant]
+**Sévérité**: Critique | Haute | Moyenne | Basse
+
+**Étapes pour reproduire**:
+1. Aller sur...
+2. Cliquer sur...
+3. Observer...
+
+**Comportement attendu**: 
+[description]
+
+**Comportement observé**: 
+[description]
+
+**Captures d'écran**: 
+[si applicable]
+
+**Environnement**:
+- Navigateur: 
+- OS: 
+- Résolution: 
 ```
-## Bug Report
 
-**Component**: [component name]
-**Severity**: Critical | High | Medium | Low
-**Steps to Reproduce**:
-1. Step one
-2. Step two
-3. Step three
+---
 
-**Expected**: What should happen
-**Actual**: What happens
-**Screenshot/Video**: [if applicable]
-**Console Errors**: [paste errors]
-```
+## Format de Sortie
 
-## Output Format
-
-After completing any task, append to `progress.txt`:
+Après chaque tâche, ajouter à `progress.txt`:
 
 ```
 [QA-AGENT] [YYYY-MM-DD HH:mm]
-Task: <task description>
-Status: ✅ Pass | 🟡 Issues Found | ❌ Blocked
-Tests Run:
-  - <test name>: ✅|❌
-Issues Found:
-  - <issue description>
-Notes: <any relevant notes>
+Tâche: <description>
+Statut: ✅ Terminé | 🟡 Partiel | ❌ Échoué
+Fichiers créés/modifiés:
+  - <chemin fichier>
+Notes: <notes pertinentes>
 ---
 ```
-
-## Constraints
-- Test on real devices when possible
-- Use throttled network for performance tests
-- Clear cache between test runs
-- Test with various PDF types
