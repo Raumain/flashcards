@@ -6,6 +6,7 @@ interface FlashcardItemProps {
 	flashcard: Flashcard
 	pageImages?: PageImage[]
 	onFlip?: (id: string, isFlipped: boolean) => void
+	onDelete?: (id: string) => void
 }
 
 interface LightboxState {
@@ -47,6 +48,7 @@ export const FlashcardItem = memo(function FlashcardItem({
 	flashcard,
 	pageImages,
 	onFlip,
+	onDelete,
 }: FlashcardItemProps) {
 	const [isFlipped, setIsFlipped] = useState(false)
 	const [lightbox, setLightbox] = useState<LightboxState>({
@@ -80,16 +82,27 @@ export const FlashcardItem = memo(function FlashcardItem({
 		flashcard.back.imageDescription || flashcard.front.imageDescription || 'Schéma de la réponse'
 	const backImageUrl = getImageUrl(pageImages, imagePageIndex)
 
-	// Handle card click for flip (but not when clicking on image)
+	// Handle card click for flip (but not when clicking on image or delete)
 	const handleCardClick = useCallback(
 		(e: React.MouseEvent) => {
-			// Don't flip if clicking on the image button
-			if ((e.target as HTMLElement).closest('[data-image-button]')) {
+			// Don't flip if clicking on the image button or delete button
+			if (
+				(e.target as HTMLElement).closest('[data-image-button]') ||
+				(e.target as HTMLElement).closest('[data-delete-button]')
+			) {
 				return
 			}
 			handleFlip()
 		},
 		[handleFlip],
+	)
+
+	const handleDelete = useCallback(
+		(e: React.MouseEvent) => {
+			e.stopPropagation()
+			onDelete?.(flashcard.id)
+		},
+		[onDelete, flashcard.id],
 	)
 
 	return (
@@ -123,11 +136,33 @@ export const FlashcardItem = memo(function FlashcardItem({
 						<span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
 							{flashcard.category}
 						</span>
-						<span
-							className={`text-xs font-medium px-2 py-1 rounded ${difficultyStyle.bg} ${difficultyStyle.text}`}
-						>
-							{difficultyLabel}
-						</span>
+						<div className="flex items-center gap-2">
+							<span
+								className={`text-xs font-medium px-2 py-1 rounded ${difficultyStyle.bg} ${difficultyStyle.text}`}
+							>
+								{difficultyLabel}
+							</span>
+							{onDelete && (
+								<button
+									type="button"
+									data-delete-button
+									onClick={handleDelete}
+									className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+									aria-label="Supprimer cette flashcard"
+									title="Supprimer"
+								>
+									<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<title>Supprimer</title>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+										/>
+									</svg>
+								</button>
+							)}
+						</div>
 					</div>
 
 					{/* Question */}

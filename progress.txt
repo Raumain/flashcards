@@ -740,3 +740,797 @@ Finding:
 Code Location: src/lib/pdf-processor.ts lines 248-275
 Notes: No changes needed - implementation already meets or exceeds requirements
 ---
+
+[DATABASE-AGENT] [2026-01-19 $(date +%H:%M)]
+Task: Configuration PostgreSQL + Docker (Task 1.1)
+Status: ✅ Terminé
+Fichiers créés/modifiés:
+  - docker-compose.yml - Ajout service postgres:16-alpine avec healthcheck
+  - .env.example - Ajout DATABASE_URL
+Notes:
+  - PostgreSQL 16.11 running on port 5432
+  - Volume postgres_data pour persistance
+  - Healthcheck configuré (pg_isready)
+  - App service dépend de postgres avec condition service_healthy
+  - Connexion testée avec succès
+---
+
+[DATABASE-AGENT] [2026-01-21 19:24]
+Task: Installation Drizzle ORM (Task 1.2)
+Status: ✅ Terminé
+Fichiers créés/modifiés:
+  - drizzle.config.ts - Configuration Drizzle avec dialect postgresql
+  - src/lib/db/index.ts - Connexion DB avec postgres-js
+  - src/lib/db/schema.ts - Placeholder pour le schéma (tâche 1.3)
+  - package.json - Ajout scripts db:generate, db:migrate, db:push, db:studio
+  - .env - Ajout DATABASE_URL
+Packages installés:
+  - drizzle-orm@0.45.1
+  - postgres@3.4.8
+  - drizzle-kit@0.31.8 (dev)
+  - @types/pg@8.16.0 (dev)
+Notes:
+  - Configuration testée avec drizzle-kit generate
+  - Prêt pour la création du schéma (tâche 1.3)
+---
+
+[DATABASE-AGENT] [2026-01-21 19:27]
+Task: Création schéma base de données (Task 1.3)
+Status: ✅ Terminé
+Fichiers créés/modifiés:
+  - src/lib/db/schema.ts - Schéma complet (7 tables)
+  - src/lib/db/index.ts - Fix non-null assertion
+  - src/lib/db/migrations/0000_marvelous_wallflower.sql - Migration initiale
+Tables créées:
+  - users (7 cols) - better-auth
+  - sessions (8 cols) - better-auth
+  - accounts (12 cols) - better-auth
+  - verifications (6 cols) - better-auth
+  - thematics (9 cols, 1 index, 1 FK)
+  - flashcards (9 cols, 2 indexes, 2 FKs)
+  - study_sessions (6 cols, 3 indexes, 2 FKs)
+Types exportés:
+  - User, NewUser, Thematic, NewThematic
+  - Flashcard, NewFlashcard, StudySession, NewStudySession
+Notes:
+  - Migration générée avec succès
+  - Prêt pour db:push (tâche 1.4)
+---
+
+[DATABASE-AGENT] [2026-01-21 19:43]
+Task: Migrations initiales (Task 1.4)
+Status: ✅ Terminé
+Actions:
+  - bun run db:push - Schéma appliqué à PostgreSQL
+  - Vérification tables créées (7 tables)
+  - Vérification indexes créés (15 indexes)
+  - drizzle-kit studio testé (https://local.drizzle.studio)
+Tables vérifiées:
+  - users, sessions, accounts, verifications (better-auth)
+  - thematics, flashcards, study_sessions (MedFlash)
+Indexes vérifiés:
+  - PKs: 7 (un par table)
+  - Unique: users_email_unique, sessions_token_unique
+  - Performance: thematics_user_id_idx, flashcards_thematic_id_idx,
+    flashcards_user_id_idx, study_sessions_*_idx (3)
+Notes:
+  - Phase 1 Infrastructure terminée ✅
+  - Prêt pour Phase 1.5/1.6 (better-auth)
+---
+
+[DATABASE-AGENT] [2026-01-21 19:43]
+Task: Migrations initiales (Task 1.4)
+Status: ✅ Terminé
+Actions:
+  - bun run db:push - Schéma appliqué à PostgreSQL
+  - Vérification tables créées (7 tables)
+  - Vérification indexes créés (15 indexes)
+  - drizzle-kit studio testé (https://local.drizzle.studio)
+Tables vérifiées:
+  - users, sessions, accounts, verifications (better-auth)
+  - thematics, flashcards, study_sessions (MedFlash)
+Indexes vérifiés:
+  - PKs: 7 (un par table)
+  - Unique: users_email_unique, sessions_token_unique
+  - Performance: thematics_user_id_idx, flashcards_thematic_id_idx,
+    flashcards_user_id_idx, study_sessions_*_idx (3)
+Notes:
+  - Phase 1 Infrastructure terminée ✅
+  - Prêt pour Phase 1.5/1.6 (better-auth)
+---
+
+[AUTH-AGENT] [2026-01-21 19:49]
+Task: Installation better-auth (Task 1.5)
+Status: ✅ Terminé
+Fichiers créés/modifiés:
+  - src/lib/auth.ts - Configuration better-auth avec Drizzle adapter
+  - .env - Ajout BETTER_AUTH_SECRET et BETTER_AUTH_URL
+  - .env.example - Ajout variables better-auth
+Package installé:
+  - better-auth@1.4.17
+Configuration:
+  - Adapter: drizzleAdapter (PostgreSQL)
+  - emailAndPassword: enabled
+  - Session: 7 jours expiration, 1 jour update age
+Types exportés:
+  - Session, User
+Notes:
+  - Prêt pour tâche 1.6 (OAuth Google)
+---
+
+[AUTH-AGENT] [2026-01-21 19:52]
+Task: Configuration OAuth Google (Task 1.6)
+Status: ✅ Terminé
+Fichiers modifiés:
+  - src/lib/auth.ts - Ajout socialProviders.google
+  - .env - Ajout GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (vides)
+  - .env.example - Documentation OAuth Google
+Configuration:
+  - Provider: google
+  - Callback URL: /api/auth/callback/google
+Notes:
+  - Variables à remplir depuis Google Cloud Console
+  - Phase 1 Infrastructure TERMINÉE ✅
+  - Prêt pour Phase 2 (Authentification)
+---
+
+[AUTH-AGENT] [2026-01-21 20:12]
+Task: Endpoint API auth better-auth (Task 2.1)
+Status: ✅ Terminé
+Fichiers créés/modifiés:
+  - src/routes/api/auth/$.ts - API catch-all route pour better-auth
+  - src/lib/auth.ts - Fix configuration drizzleAdapter avec schema mapping
+  - src/lib/db/schema.ts - Ajout champ password dans accounts
+Routes gérées automatiquement:
+  - POST /api/auth/sign-up/email - Inscription
+  - POST /api/auth/sign-in/email - Connexion email
+  - GET /api/auth/sign-in/google - Début OAuth Google
+  - GET /api/auth/callback/google - Callback OAuth
+  - POST /api/auth/sign-out - Déconnexion
+  - GET /api/auth/get-session - Récupérer session
+Corrections effectuées:
+  - Import path alias: ~/ au lieu de @/
+  - Schema mapping: users → user, sessions → session, etc.
+  - Champ password manquant dans table accounts
+Tests:
+  - ✓ Sign-up: création utilisateur réussie
+  - ✓ Sign-in: connexion réussie avec token
+  - ✓ Get-session: retourne null (non connecté) ou session
+Notes:
+  - Endpoint accessible et fonctionnel
+  - Pas d'erreur 500
+  - Prêt pour Task 2.2 (Page d'inscription)
+---
+
+[FRONTEND-AGENT] [2026-01-21 20:25]
+Task: Page d'inscription (Task 2.2)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/lib/auth-client.ts - Client better-auth pour React
+  - src/components/auth/SocialButtons.tsx - Bouton Google OAuth
+  - src/components/auth/index.ts - Barrel exports
+  - src/routes/signup.tsx - Page d'inscription complète
+Dependencies installées:
+  - @tanstack/react-form@1.27.7
+  - @tanstack/zod-form-adapter@0.42.1
+Fonctionnalités:
+  - Formulaire TanStack Form + Zod validation
+  - Champs: Nom, Email, Mot de passe
+  - Bouton Google OAuth (SocialButtons)
+  - Messages d'erreur en français
+  - Loading states pendant soumission
+  - Design épuré, centré, sans AI patterns
+  - Lien vers /signin
+Validation:
+  - ✓ Page s'affiche correctement
+  - ✓ Validation Zod fonctionne (min 2 chars nom, email valide, min 8 chars password)
+  - ✓ Erreurs affichées en français
+  - ✓ Accessible (labels, focus states, aria)
+Notes:
+  - Prêt pour Task 2.3 (Page de connexion)
+---
+
+[FRONTEND-AGENT] [2026-01-21 20:35]
+Task: Page de connexion (Task 2.3)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/routes/signin.tsx - Page de connexion complète
+Fonctionnalités:
+  - Formulaire TanStack Form + Zod validation
+  - Champs: Email, Mot de passe
+  - Bouton Google OAuth (SocialButtons mode="signin")
+  - Messages d'erreur en français
+  - Loading states pendant soumission
+  - Lien "Mot de passe oublié ?"
+  - Lien vers /signup
+  - Design cohérent avec signup
+Validation:
+  - ✓ Route /signin enregistrée dans routeTree.gen.ts
+  - ✓ Structure similaire à /signup
+  - ✓ Accessible (labels, focus states, aria)
+Notes:
+  - Prêt pour Task 2.4 (Boutons OAuth déjà créé dans 2.2)
+  - Task 2.4 terminée: SocialButtons créé dans Task 2.2
+  - Prêt pour Task 2.5 (Middleware protection routes)
+---
+
+[AUTH-AGENT] [2026-01-21 21:00]
+Task: Middleware protection routes (Task 2.5)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/server/middleware/auth.ts - Middleware d'authentification
+  - src/server/middleware/index.ts - Barrel exports
+  - src/server/functions/user.ts - Fonction protégée exemple
+Fonctionnalités:
+  - authMiddleware - Protection routes, throw si non authentifié
+  - optionalAuthMiddleware - Ne throw pas, ajoute user/session ou null
+  - Types AuthContext et OptionalAuthContext exportés
+  - Utilise auth.api.getSession() pour valider session
+  - Ajoute user et session au context TanStack Start
+Usage:
+  ```ts
+  const protectedFn = createServerFn()
+    .middleware([authMiddleware])
+    .handler(async ({ context }) => {
+      const { user } = context as AuthContext
+      // Logique protégée
+    })
+  ```
+Exemple implémenté:
+  - getCurrentUser() - Retourne les infos de l'utilisateur authentifié
+Validation:
+  - ✓ Pas d'erreurs TypeScript
+  - ✓ Types correctement inférés
+  - ✓ Compatible avec TanStack Start middleware pattern
+Notes:
+  - Prêt pour Task 2.6 (UserMenu component)
+---
+
+[FRONTEND-AGENT] [2026-01-21 21:15]
+Task: Composant UserMenu (Task 2.6)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/components/layout/UserMenu.tsx - Menu utilisateur avec dropdown
+  - src/components/layout/index.ts - Barrel exports
+Fonctionnalités:
+  - Affiche bouton "Connexion" si non authentifié
+  - Affiche avatar (image ou initiales) + nom si authentifié
+  - Menu dropdown avec:
+    - Info utilisateur (nom, email)
+    - Lien Dashboard
+    - Lien Paramètres
+    - Bouton Déconnexion
+  - Fermeture menu: clic extérieur, touche Escape
+  - Loading state pendant chargement session
+  - Loading state pendant déconnexion
+Accessibilité:
+  - ✓ aria-expanded, aria-haspopup
+  - ✓ role="menu", role="menuitem"
+  - ✓ Focus ring visible
+  - ✓ Navigation clavier (Escape pour fermer)
+  - ✓ Titres sur SVG icons
+Design:
+  - Épuré, coins rounded-lg/xl max
+  - Couleurs: bleu-600, gray-*, red-600 pour déconnexion
+  - Transitions smooth
+Validation:
+  - ✓ Pas d'erreurs TypeScript
+  - ✓ Utilise useSession de better-auth/react
+Notes:
+  - Prêt pour intégration dans Navbar (Task 4.1)
+  - Prêt pour Task 2.7 (Settings page)
+---
+
+[FRONTEND-AGENT] [2026-01-21 21:30]
+Task: Page Paramètres (Task 2.7)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/routes/dashboard.tsx - Layout dashboard avec navbar et navigation
+  - src/routes/dashboard/index.tsx - Page d'accueil dashboard
+  - src/routes/dashboard/settings.tsx - Page paramètres utilisateur
+Fonctionnalités dashboard.tsx:
+  - Navbar avec logo MedFlash
+  - Navigation desktop: Vue d'ensemble, Mes flashcards, Paramètres
+  - Navigation mobile responsive
+  - Intégration UserMenu
+  - Layout avec Outlet pour pages enfant
+Fonctionnalités dashboard/index.tsx:
+  - Message de bienvenue personnalisé
+  - Stats cards (flashcards, sessions, taux réussite)
+  - Actions rapides avec liens
+Fonctionnalités settings.tsx:
+  - Section profil avec avatar et formulaire
+  - Modification du nom (TanStack Form + Zod)
+  - Affichage email (non modifiable)
+  - Section compte: méthode connexion, email vérifié, date inscription
+  - Zone dangereuse: suppression compte avec confirmation modale
+  - Messages succès/erreur
+Accessibilité:
+  - ✓ Labels associés aux inputs
+  - ✓ Focus states
+  - ✓ Loading states
+Validation:
+  - ✓ Pas d'erreurs TypeScript
+  - ✓ Routes enregistrées
+Notes:
+  - Phase 2 Authentification terminée ✅
+  - Prêt pour Phase 3 ou Phase 4
+---
+[BACKEND-AGENT] [2026-01-21 22:00]
+Task: Server function saveFlashcards (Task 3.1)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/server/functions/flashcards.ts - Server functions pour flashcards
+Fonctions implémentées:
+  1. saveFlashcards(thematicId, flashcards[])
+     - Vérifie que la thématique appartient à l'utilisateur
+     - Insère les flashcards avec batch insert
+     - Retourne les cartes insérées avec IDs générés
+  2. getFlashcard(id)
+     - Récupère une flashcard par ID
+     - Vérifie l'appartenance utilisateur
+     - Retourne null si non trouvée
+  3. deleteFlashcard(id)
+     - Supprime une flashcard par ID
+     - Vérifie l'appartenance utilisateur
+     - Retourne { success: true }
+Schémas Zod créés:
+  - flashcardInputSchema (front, back, category, difficulty)
+  - saveFlashcardsInputSchema (thematicId, flashcards[])
+  - idSchema (id UUID)
+Types exportés:
+  - FlashcardInput
+  - SaveFlashcardsInput
+Validation:
+  - ✓ Biome lint/format OK
+  - ✓ TypeScript sans erreurs
+  - ✓ Intégration authMiddleware
+Notes:
+  - Prêt pour Task 3.2 (Extraction thématique par IA)
+---
+---
+
+[BACKEND-AGENT] [2026-01-21 22:15]
+Task: Extraction thématique par IA (Task 3.2)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/lib/prompts/thematic-extractor.ts
+Contenu implémenté:
+  1. THEMATIC_EXTRACTION_PROMPT
+     - Prompt système pour Gemini
+     - Table de couleurs par domaine médical (26 spécialités)
+     - Exemples de sorties JSON
+  2. thematicExtractionSchema (Zod)
+     - Validation nom, description, couleur, emoji
+  3. parseThematicResponse()
+     - Parse et valide le JSON avec fallback
+  4. Types: ThematicExtraction, DEFAULT_THEMATIC
+Validation:
+  - ✓ Biome lint OK
+  - ✓ TypeScript sans erreurs
+Notes:
+  - Prêt pour Task 3.3 (getThematics server function)
+---
+
+[BACKEND-AGENT] [2026-01-21 22:30]
+Task: Server function getThematics (Task 3.3) + Task 3.7 (deleteThematic)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/server/functions/thematics.ts
+Fonctions implémentées:
+  1. getThematics()
+     - Liste toutes les thématiques de l utilisateur
+     - LEFT JOIN avec flashcards pour compter
+     - Ordonné par date décroissante
+  2. getThematic(id)
+     - Récupère une thématique par ID avec flashcardCount
+  3. createThematic(name, description?, color?, icon?, pdfName?)
+     - Crée une nouvelle thématique
+     - Valeurs par défaut: color=#3B82F6, icon=📚
+  4. updateThematic(id, name?, description?, color?, icon?)
+     - Met à jour les champs spécifiés uniquement
+     - Met à jour updatedAt automatiquement
+  5. deleteThematic(id)
+     - Supprime la thématique
+     - Cascade vers flashcards et study_sessions
+Types exportés:
+  - CreateThematicInput
+  - ThematicWithCount
+Validation:
+  - ✓ Biome lint OK
+  - ✓ TypeScript sans erreurs
+Notes:
+  - Task 3.7 (deleteThematic) incluse dans cette tâche
+  - Prêt pour Task 3.4 (getFlashcardsByThematic)
+---
+
+[BACKEND-AGENT] [2026-01-21 22:45]
+Task: Server function getFlashcardsByThematic (Task 3.4)
+Status: ✅ Terminé
+Fichiers modifiés:
+  - src/server/functions/flashcards.ts
+Fonctions ajoutées:
+  1. getFlashcardsByThematic(thematicId)
+     - Récupère toutes les flashcards d une thématique
+     - Vérifie l appartenance utilisateur
+     - Ordonnées par date de création (ASC)
+  2. getFlashcardsByThematics(thematicIds[])
+     - Récupère les flashcards de plusieurs thématiques
+     - Utilise inArray pour requête optimisée
+     - Vérifie l appartenance utilisateur
+  3. getAllFlashcards()
+     - Récupère toutes les flashcards de l utilisateur
+     - Utile pour le mode étude global
+Imports ajoutés:
+  - asc, inArray depuis drizzle-orm
+Validation:
+  - ✓ Biome lint OK
+  - ✓ TypeScript sans erreurs
+Notes:
+  - Prêt pour Task 3.5 (Modification génération pour sauvegarder)
+---
+[BACKEND-AGENT] [2026-01-22 10:30]
+Task: Modification génération pour sauvegarder (Task 3.5)
+Status: ✅ Terminé
+Fichiers modifiés:
+  - src/lib/gemini.ts
+  - src/server/functions/generate.ts
+  - src/lib/prompts/thematic-extractor.ts (créé dans Task 3.2)
+Fonctions ajoutées:
+  1. extractThematicFromImages(images) dans gemini.ts
+     - Extrait nom, description, spécialité depuis les 1-2 premières pages
+     - Utilise Gemini 2.0 Flash avec generateText
+     - Parse la réponse JSON avec fallback sur valeurs par défaut
+  2. generateAndSaveFlashcards() dans generate.ts
+     - Version authentifiée de generateFlashcards
+     - Utilise authMiddleware pour vérifier l authentification
+     - Workflow en 5 étapes:
+       a. Conversion PDF → images
+       b. Extraction thématique via IA
+       c. Sauvegarde thématique en base
+       d. Génération flashcards via IA
+       e. Sauvegarde flashcards en base
+     - Retourne thematic, flashcards, metadata, pageImages
+     - Rate limiting et concurrency control
+Types exportés:
+  - GenerateAndSaveResponse
+Imports ajoutés dans generate.ts:
+  - extractThematicFromImages depuis ~/lib/gemini
+  - db, flashcards, thematics depuis ~/lib/db
+  - authMiddleware, AuthContext depuis ~/server/middleware/auth
+Validation:
+  - ✓ Biome lint OK
+  - ✓ TypeScript sans erreurs
+Notes:
+  - Phase 3 (Persistance Flashcards) terminée
+  - Toutes les tâches 3.1-3.7 complètes
+---
+
+[FRONTEND-AGENT] [2026-01-21 23:15]
+Task: Route /dashboard/flashcards (Task 4.4)
+Status: ✅ Terminé
+Fichiers modifiés:
+  - src/routes/dashboard/flashcards.tsx
+Fonctionnalités implémentées:
+  1. Header avec boutons d'action:
+     - Bouton "Nouveau PDF" → lien vers génération
+     - Bouton "Étudier" (désactivé, Phase 5)
+  2. Statistiques globales dans le header:
+     - Nombre de thématiques
+     - Nombre total de flashcards
+  3. Vue détaillée d'une thématique:
+     - Bouton retour "Retour aux thématiques"
+     - Icône et nom de la thématique
+     - Description (si disponible)
+     - Nombre de flashcards
+     - Nom du fichier PDF source
+     - Bouton étudier (désactivé, Phase 5)
+  4. Icônes ajoutées:
+     - ChevronLeftIcon (retour)
+     - PlusIcon (nouveau)
+     - PlayIcon (étudier)
+     - DocumentIcon (PDF)
+Accessibilité:
+  - ✓ Boutons avec title pour tooltips
+  - ✓ disabled state correct pour boutons Study
+  - ✓ Transitions smooth
+Notes:
+  - Boutons "Étudier" prêts pour Phase 5 (route /study)
+  - Prêt pour Task 4.5 (Route /dashboard/flashcards/:id)
+---
+
+[FRONTEND-AGENT] [2026-01-21 23:45]
+Task: Route /dashboard/flashcards/$thematicId (Task 4.5)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/routes/dashboard/flashcards/$thematicId.tsx
+Fichiers modifiés:
+  - src/routes/dashboard/flashcards.tsx - AllThematicsView utilise Link
+  - src/components/flashcards/FlashcardGrid.tsx - Prop onDeleteFlashcard
+  - src/components/flashcards/FlashcardItem.tsx - Prop onDelete + bouton supprimer
+  - src/server/functions/thematics.ts - inputValidator pour getThematic/deleteThematic
+  - src/server/functions/flashcards.ts - inputValidator pour deleteFlashcard
+Fonctionnalités implémentées:
+  1. Page détail thématique:
+     - Breadcrumb navigation (Mes Flashcards > Thématique)
+     - Header avec icône, nom, description
+     - Métadonnées: nombre flashcards, nom PDF, date création
+     - Bouton Étudier (désactivé, Phase 5)
+     - Bouton Supprimer thématique
+  2. Grille de flashcards:
+     - FlashcardGrid avec filtre catégorie/difficulté
+     - Bouton supprimer sur chaque carte
+  3. Modal de confirmation:
+     - Supprimer flashcard individuelle
+     - Supprimer thématique (cascade sur flashcards)
+     - Loading state pendant suppression
+     - Invalidation cache TanStack Query
+  4. Navigation:
+     - AllThematicsView utilise Link vers route dynamique
+     - Retour vers /dashboard/flashcards après suppression thématique
+Accessibilité:
+  - ✓ Breadcrumb navigation
+  - ✓ Boutons avec title/aria-label
+  - ✓ Modal avec focus trap (TODO: améliorer)
+  - ✓ Loading states
+Notes:
+  - Task 4.6 (FlashcardGrid amélioré) partiellement fait (onDelete)
+  - Task 4.7 (Actions supprimer) terminée
+  - Phase 4 quasiment terminée
+---
+[FRONTEND-AGENT] [2026-01-21 23:07]
+Task: Complete Phase 4 - Extract missing components
+Status: ✅ Terminé
+Fichiers créés:
+  - src/components/layout/Navbar.tsx - Navbar avec navigation desktop
+  - src/components/layout/Sidebar.tsx - Sidebar navigation (pour layout alternatif)
+  - src/components/flashcards/ThematicCard.tsx - Composant carte thématique réutilisable
+Fichiers modifiés:
+  - src/components/layout/index.ts - Exports Navbar, MobileNav, Sidebar
+  - src/components/flashcards/index.ts - Export ThematicCard, ThematicButton
+  - src/routes/dashboard.tsx - Refactorisé pour utiliser Navbar/MobileNav
+  - src/routes/dashboard/flashcards.tsx - Utilise ThematicCard/ThematicButton importés
+Composants créés:
+  Navbar.tsx:
+  - Navigation desktop avec liens actifs
+  - Logo MedFlash
+  - Intégration UserMenu
+  MobileNav:
+  - Navigation mobile horizontale scrollable
+  - Export séparé pour flexibilité
+  Sidebar.tsx:
+  - Navigation verticale complète
+  - Liens vers Study/Revision (désactivés, Phase 5)
+  - Bouton "Nouveau PDF" en bas
+  ThematicCard.tsx:
+  - Affichage thématique avec icon, nom, description
+  - Nombre de flashcards
+  - Nom fichier PDF source
+  - Bouton supprimer avec confirmation modale
+  - ThematicButton pour usage sidebar/liste
+Validation:
+  - ✓ TypeScript sans erreurs
+  - ✓ 42/42 tests passent
+  - ✓ Biome lint OK
+Notes:
+  - Phase 4 TERMINÉE ✅
+  - Prêt pour Phase 5 (Mode Étude)
+---
+[STUDY-AGENT] [2026-01-21 23:17]
+Task: Route /study sélection thématiques (Task 5.1)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/routes/study/index.tsx - Page de sélection des thématiques
+  - src/routes/study/session.tsx - Placeholder pour session d'étude
+  - src/components/study/TopicSelector.tsx - Composant de sélection
+  - src/components/study/index.ts - Exports du module study
+Dépendances installées:
+  - framer-motion@12.28.1 (pour animations swipe Task 5.3)
+Fonctionnalités implémentées:
+  1. Route /study:
+     - Header avec bouton retour vers dashboard
+     - Chargement des thématiques utilisateur via TanStack Query
+     - État loading avec spinner
+     - Gestion erreurs avec option de reload
+  2. TopicSelector component:
+     - Affichage grille de thématiques cliquables
+     - Checkbox visuel avec animation de sélection
+     - Boutons "Tout sélectionner" / "Tout désélectionner"
+     - Compteur de cartes sélectionnées
+     - Bouton "Commencer" désactivé si aucune sélection
+     - Navigation vers /study/session avec IDs dans search params
+     - État vide avec lien vers génération
+  3. Route /study/session (placeholder):
+     - Récupération des thematic IDs depuis URL
+     - Message placeholder pour Phase 5.4
+     - Lien retour vers sélection
+Accessibilité:
+  - ✓ Boutons avec aria-hidden sur icônes décoratives
+  - ✓ Screen reader text pour liens icônes
+  - ✓ États focus visibles
+  - ✓ Keyboard navigation
+Validation:
+  - ✓ TypeScript sans erreurs
+  - ✓ 42/42 tests passent
+  - ✓ Biome lint OK
+Notes:
+  - Task 5.2 (TopicSelector) implémentée conjointement
+  - Prêt pour Task 5.3 (SwipeableCard avec Framer Motion)
+---
+---
+
+[STUDY-AGENT] [2026-01-21 23:24]
+Task: Composant SwipeableCard avec Framer Motion (Task 5.3)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/components/study/SwipeableCard.tsx - Carte interactive avec swipe
+Fichiers modifiés:
+  - src/components/study/index.ts - Ajout export SwipeableCard
+Fonctionnalités implémentées:
+  1. Animation de flip 3D:
+     - Face avant: Question avec difficulté et catégorie
+     - Face arrière: Réponse avec détails
+     - Transition fluide 0.5s avec ease-in-out
+     - CSS 3D: perspective, transform-style, backface-visibility
+  2. Gesture drag horizontal (Framer Motion):
+     - useMotionValue pour tracking position X
+     - useTransform pour rotation (-15° à +15°)
+     - useTransform pour scale (0.95 quand drag)
+     - dragElastic: 0.7 pour retour élastique
+     - Seuil de swipe: 100px
+  3. Indicateurs visuels pendant drag:
+     - Cercle vert ✓ (correct) - opacité liée à x > 0
+     - Cercle rouge ✗ (incorrect) - opacité liée à x < 0
+     - Animation exit: 500px hors écran + opacity 0
+  4. États de la carte:
+     - isFlipped: toggle au clic
+     - exitDirection: left | right | null
+     - Protection flip pendant drag (threshold 10px)
+Accessibilité:
+  - ✓ role="button" sur élément draggable
+  - ✓ tabIndex={0} pour focus clavier
+  - ✓ onKeyDown: Space/Enter pour flip
+  - ✓ aria-label avec question
+  - ✓ aria-hidden sur icônes décoratives
+  - ✓ touch-none pour éviter scroll mobile
+Validation:
+  - ✓ TypeScript sans erreurs
+  - ✓ 42/42 tests passent
+  - ✓ Biome lint OK
+Notes:
+  - Complexité 8/10 - composant le plus avancé de Phase 5
+  - Prêt pour Task 5.4 (Route /study/session complète)
+---
+
+[STUDY-AGENT] [2026-01-21 23:38]
+Task: Route /study/session complète (Task 5.4 + 5.5 + 5.6 + 5.7)
+Status: ✅ Terminé
+Fichiers créés:
+  - src/server/functions/study.ts - recordStudyResult server function
+  - src/components/study/StudyProgress.tsx - Barre de progression
+  - src/components/study/StudyComplete.tsx - Écran de fin de session
+Fichiers modifiés:
+  - src/routes/study/session.tsx - Route complète avec logique
+  - src/components/study/index.ts - Exports des nouveaux composants
+  - src/server/functions/flashcards.ts - Ajout inputValidator à getFlashcardsByThematics
+Fonctionnalités implémentées:
+  1. Route /study/session:
+     - Récupère flashcards des thématiques sélectionnées
+     - Mélange aléatoire (Fisher-Yates shuffle)
+     - Affiche une carte à la fois avec SwipeableCard
+     - Enregistre résultats localement et en DB
+     - Affiche progression en temps réel
+     - Écran de fin avec statistiques
+  2. recordStudyResult (Task 5.5):
+     - Server function POST avec inputValidator
+     - Enregistre flashcardId, isCorrect, responseTime
+     - Insert dans table study_sessions
+  3. StudyProgress (Task 5.6):
+     - Barre de progression visuelle
+     - Compteur cartes correctes/incorrectes
+     - Accessible avec aria-valuenow/max
+  4. StudyComplete (Task 5.7):
+     - Emoji dynamique selon score (🎉/💪/📚)
+     - Statistiques: correct, incorrect, % réussite
+     - Temps moyen par carte
+     - Liste des cartes incorrectes à réviser
+     - Liens: Nouvelle session, Retour dashboard
+Accessibilité:
+  - ✓ aria-hidden sur icônes décoratives
+  - ✓ progressbar accessible
+  - ✓ sr-only labels
+Validation:
+  - ✓ TypeScript sans erreurs
+  - ✓ 42/42 tests passent
+  - ✓ Biome lint OK
+Notes:
+  - Phase 5 TERMINÉE ✅
+  - Tasks 5.1-5.7 toutes complètes
+  - Prêt pour Phase 6 (Mode Révision)
+---
+
+[STUDY-AGENT] [2026-01-25 10:00]
+Tâche: 6.1 - Server function getRevisionCards
+Statut: ✅ Terminé
+Fichiers modifiés:
+  - src/server/functions/study.ts
+Fonctionnalités:
+  1. Schema getRevisionCardsSchema avec threshold (min 1, défaut 3)
+  2. Type RevisionCard exporté avec:
+     - Toutes propriétés Flashcard
+     - errorCount: nombre erreurs
+     - totalSessions: nombre sessions
+     - thematicName: nom de la thématique
+     - thematicIcon: icône de la thématique
+  3. Server function getRevisionCards:
+     - Middleware auth requis
+     - Join flashcards + thematics + studySessions
+     - Filtre par userId + threshold erreurs
+     - Tri par errorCount DESC (plus difficiles en premier)
+     - COUNT CASE WHEN pour calculer erreurs
+Validation:
+  - ✓ TypeScript sans erreurs
+  - ✓ Imports Drizzle corrects (eq, sql)
+Notes: Prêt pour Task 6.2 (Route /revision configuration)
+---
+
+[STUDY-AGENT] [2026-01-25 10:30]
+Tâche: 6.2 - Route /revision configuration + 6.3 - ThresholdSlider
+Statut: ✅ Terminé
+Fichiers créés:
+  - src/routes/revision/index.tsx
+  - src/components/study/ThresholdSlider.tsx
+  - src/components/study/RevisionCardPreview.tsx
+Fichiers modifiés:
+  - src/components/study/index.ts (exports)
+Fonctionnalités:
+  1. Route /revision avec:
+     - Header avec navigation retour dashboard
+     - État local threshold (défaut 3)
+     - Query getRevisionCards avec refetch sur threshold
+     - Bouton démarrer (désactivé si 0 cartes)
+     - Message félicitations si aucune carte
+  2. ThresholdSlider:
+     - Slider range 1-10
+     - Affichage valeur actuelle
+     - Label accessible avec aria-valuenow/min/max
+     - Description dynamique pluriel
+  3. RevisionCardPreview:
+     - Affiche question + thématique
+     - Badge couleur selon gravité (jaune/orange/rouge)
+     - Truncate long text
+Validation:
+  - ✓ TypeScript sans erreurs
+  - ✓ Accessibilité (labels, sr-only)
+Notes: Navigation vers /revision/session sera typée en Task 6.4
+---
+
+[STUDY-AGENT] [2026-01-25 11:00]
+Tache: 6.4 - Route /revision/session
+Statut: OK Termine
+Fichiers crees:
+  - src/routes/revision/session.tsx
+Fichiers modifies:
+  - src/routes/revision/index.tsx (navigation TanStack)
+Fonctionnalites:
+  1. Route /revision/session avec:
+     - validateSearch pour threshold param
+     - Query getRevisionCards avec threshold
+     - Shuffle des cartes
+     - Mutation recordStudyResult
+     - Invalidation queries dashboard-metrics et revision-cards
+  2. Session de revision:
+     - Reutilise SwipeableCard, StudyProgress, StudyComplete
+     - Badge "Mode Revision" distinct
+     - RevisionBadge sur chaque carte (couleur selon gravite)
+     - Instructions swipe gauche/droite
+  3. RevisionBadge component:
+     - Couleurs: jaune (1-2), orange (3-4), rouge (5+)
+     - Position absolute au-dessus de la carte
+  4. Etats geres:
+     - Loading, Empty, Complete, Session active
+Validation:
+  - OK TypeScript sans erreurs
+  - OK Navigation TanStack Router
+Notes: Task 6.5 (indicateur priorite) integre dans RevisionBadge
+---

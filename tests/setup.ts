@@ -1,6 +1,6 @@
 import '@testing-library/dom'
 import { cleanup } from '@testing-library/react'
-import { afterEach, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 
 // Cleanup after each test
 afterEach(() => {
@@ -11,7 +11,7 @@ afterEach(() => {
 vi.stubEnv('GOOGLE_GENERATIVE_AI_API_KEY', 'test-api-key')
 
 // Mock fetch globally
-global.fetch = vi.fn()
+global.fetch = vi.fn() as unknown as typeof fetch
 
 // Mock URL.createObjectURL and URL.revokeObjectURL
 global.URL.createObjectURL = vi.fn(() => 'blob:mock-url')

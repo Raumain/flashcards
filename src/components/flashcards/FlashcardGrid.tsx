@@ -6,6 +6,7 @@ interface FlashcardGridProps {
 	flashcards: Flashcard[]
 	pageImages?: PageImage[]
 	onFlashcardFlip?: (id: string, isFlipped: boolean) => void
+	onDeleteFlashcard?: (id: string) => void
 }
 
 type DifficultyFilter = 'all' | Flashcard['difficulty']
@@ -18,6 +19,7 @@ export const FlashcardGrid = memo(function FlashcardGrid({
 	flashcards,
 	pageImages,
 	onFlashcardFlip,
+	onDeleteFlashcard,
 }: FlashcardGridProps) {
 	const [categoryFilter, setCategoryFilter] = useState<string>('all')
 	const [difficultyFilter, setDifficultyFilter] = useState<DifficultyFilter>('all')
@@ -132,6 +134,7 @@ export const FlashcardGrid = memo(function FlashcardGrid({
 								flashcard={flashcard}
 								pageImages={pageImages}
 								onFlip={onFlashcardFlip}
+								onDelete={onDeleteFlashcard}
 							/>
 						</li>
 					))}

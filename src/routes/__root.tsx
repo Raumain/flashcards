@@ -1,7 +1,18 @@
 /// <reference types="vite/client" />
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import '../styles/globals.css'
+
+// Create a client
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			staleTime: 1000 * 60, // 1 minute
+			retry: 1,
+		},
+	},
+})
 
 export const Route = createRootRoute({
 	head: () => ({
@@ -65,9 +76,11 @@ function NotFoundPage() {
 
 function RootComponent() {
 	return (
-		<RootDocument>
-			<Outlet />
-		</RootDocument>
+		<QueryClientProvider client={queryClient}>
+			<RootDocument>
+				<Outlet />
+			</RootDocument>
+		</QueryClientProvider>
 	)
 }
 

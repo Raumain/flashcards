@@ -9,38 +9,214 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SigninRouteImport } from './routes/signin'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StudyIndexRouteImport } from './routes/study/index'
+import { Route as RevisionIndexRouteImport } from './routes/revision/index'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as StudySessionRouteImport } from './routes/study/session'
+import { Route as RevisionSessionRouteImport } from './routes/revision/session'
+import { Route as DashboardSettingsRouteImport } from './routes/dashboard/settings'
+import { Route as DashboardFlashcardsRouteImport } from './routes/dashboard/flashcards'
+import { Route as DashboardFlashcardsThematicIdRouteImport } from './routes/dashboard/flashcards/$thematicId'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninRoute = SigninRouteImport.update({
+  id: '/signin',
+  path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudyIndexRoute = StudyIndexRouteImport.update({
+  id: '/study/',
+  path: '/study/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RevisionIndexRoute = RevisionIndexRouteImport.update({
+  id: '/revision/',
+  path: '/revision/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const StudySessionRoute = StudySessionRouteImport.update({
+  id: '/study/session',
+  path: '/study/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RevisionSessionRoute = RevisionSessionRouteImport.update({
+  id: '/revision/session',
+  path: '/revision/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardFlashcardsRoute = DashboardFlashcardsRouteImport.update({
+  id: '/flashcards',
+  path: '/flashcards',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardFlashcardsThematicIdRoute =
+  DashboardFlashcardsThematicIdRouteImport.update({
+    id: '/$thematicId',
+    path: '/$thematicId',
+    getParentRoute: () => DashboardFlashcardsRoute,
+  } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
+  '/dashboard/flashcards': typeof DashboardFlashcardsRouteWithChildren
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/revision/session': typeof RevisionSessionRoute
+  '/study/session': typeof StudySessionRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/revision/': typeof RevisionIndexRoute
+  '/study/': typeof StudyIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboard/flashcards/$thematicId': typeof DashboardFlashcardsThematicIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
+  '/dashboard/flashcards': typeof DashboardFlashcardsRouteWithChildren
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/revision/session': typeof RevisionSessionRoute
+  '/study/session': typeof StudySessionRoute
+  '/dashboard': typeof DashboardIndexRoute
+  '/revision': typeof RevisionIndexRoute
+  '/study': typeof StudyIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboard/flashcards/$thematicId': typeof DashboardFlashcardsThematicIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRouteWithChildren
+  '/signin': typeof SigninRoute
+  '/signup': typeof SignupRoute
+  '/dashboard/flashcards': typeof DashboardFlashcardsRouteWithChildren
+  '/dashboard/settings': typeof DashboardSettingsRoute
+  '/revision/session': typeof RevisionSessionRoute
+  '/study/session': typeof StudySessionRoute
+  '/dashboard/': typeof DashboardIndexRoute
+  '/revision/': typeof RevisionIndexRoute
+  '/study/': typeof StudyIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/dashboard/flashcards/$thematicId': typeof DashboardFlashcardsThematicIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/signin'
+    | '/signup'
+    | '/dashboard/flashcards'
+    | '/dashboard/settings'
+    | '/revision/session'
+    | '/study/session'
+    | '/dashboard/'
+    | '/revision/'
+    | '/study/'
+    | '/api/auth/$'
+    | '/dashboard/flashcards/$thematicId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/signin'
+    | '/signup'
+    | '/dashboard/flashcards'
+    | '/dashboard/settings'
+    | '/revision/session'
+    | '/study/session'
+    | '/dashboard'
+    | '/revision'
+    | '/study'
+    | '/api/auth/$'
+    | '/dashboard/flashcards/$thematicId'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/signin'
+    | '/signup'
+    | '/dashboard/flashcards'
+    | '/dashboard/settings'
+    | '/revision/session'
+    | '/study/session'
+    | '/dashboard/'
+    | '/revision/'
+    | '/study/'
+    | '/api/auth/$'
+    | '/dashboard/flashcards/$thematicId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
+  SigninRoute: typeof SigninRoute
+  SignupRoute: typeof SignupRoute
+  RevisionSessionRoute: typeof RevisionSessionRoute
+  StudySessionRoute: typeof StudySessionRoute
+  RevisionIndexRoute: typeof RevisionIndexRoute
+  StudyIndexRoute: typeof StudyIndexRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin': {
+      id: '/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof SigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +224,109 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/study/': {
+      id: '/study/'
+      path: '/study'
+      fullPath: '/study/'
+      preLoaderRoute: typeof StudyIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/revision/': {
+      id: '/revision/'
+      path: '/revision'
+      fullPath: '/revision/'
+      preLoaderRoute: typeof RevisionIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/study/session': {
+      id: '/study/session'
+      path: '/study/session'
+      fullPath: '/study/session'
+      preLoaderRoute: typeof StudySessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/revision/session': {
+      id: '/revision/session'
+      path: '/revision/session'
+      fullPath: '/revision/session'
+      preLoaderRoute: typeof RevisionSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/settings': {
+      id: '/dashboard/settings'
+      path: '/settings'
+      fullPath: '/dashboard/settings'
+      preLoaderRoute: typeof DashboardSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/flashcards': {
+      id: '/dashboard/flashcards'
+      path: '/flashcards'
+      fullPath: '/dashboard/flashcards'
+      preLoaderRoute: typeof DashboardFlashcardsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/flashcards/$thematicId': {
+      id: '/dashboard/flashcards/$thematicId'
+      path: '/$thematicId'
+      fullPath: '/dashboard/flashcards/$thematicId'
+      preLoaderRoute: typeof DashboardFlashcardsThematicIdRouteImport
+      parentRoute: typeof DashboardFlashcardsRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface DashboardFlashcardsRouteChildren {
+  DashboardFlashcardsThematicIdRoute: typeof DashboardFlashcardsThematicIdRoute
+}
+
+const DashboardFlashcardsRouteChildren: DashboardFlashcardsRouteChildren = {
+  DashboardFlashcardsThematicIdRoute: DashboardFlashcardsThematicIdRoute,
+}
+
+const DashboardFlashcardsRouteWithChildren =
+  DashboardFlashcardsRoute._addFileChildren(DashboardFlashcardsRouteChildren)
+
+interface DashboardRouteChildren {
+  DashboardFlashcardsRoute: typeof DashboardFlashcardsRouteWithChildren
+  DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardFlashcardsRoute: DashboardFlashcardsRouteWithChildren,
+  DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRouteWithChildren,
+  SigninRoute: SigninRoute,
+  SignupRoute: SignupRoute,
+  RevisionSessionRoute: RevisionSessionRoute,
+  StudySessionRoute: StudySessionRoute,
+  RevisionIndexRoute: RevisionIndexRoute,
+  StudyIndexRoute: StudyIndexRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

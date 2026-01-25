@@ -1,8 +1,16 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
-import { awaitStreamResult, GeminiError, streamFlashcardsFromImages } from '../../lib/gemini'
+import { db } from '~/lib/db'
+import { flashcards, thematics } from '~/lib/db/schema'
+import {
+  awaitStreamResult,
+  extractThematicFromImages,
+  GeminiError,
+  streamFlashcardsFromImages,
+} from '../../lib/gemini'
 import { PDFProcessingError, pdfToImages } from '../../lib/pdf-processor'
 import type { GenerationResult } from '../../lib/types/flashcard'
+import { type AuthContext, authMiddleware } from '../middleware/auth'
 
 /**
  * Maximum file size in bytes (20MB)
@@ -461,5 +469,225 @@ export const generateFlashcardsStreaming = createServerFn({ method: 'POST' })
     } finally {
       releaseSlot()
       log('info', 'Concurrency slot released for streaming')
+    }
+  })
+
+// ==========================================
+// AUTHENTICATED GENERATION WITH PERSISTENCE
+// ==========================================
+
+/**
+ * Response type for authenticated generation
+ */
+export interface GenerateAndSaveResponse {
+  success: boolean
+  thematic?: {
+    id: string
+    name: string
+    description: string | null
+    color: string | null
+    icon: string | null
+    pdfName: string | null
+  }
+  flashcards?: Array<{
+    id: string
+    front: { question: string; imageDescription?: string }
+    back: { answer: string; details?: string; imageDescription?: string }
+    category: string | null
+    difficulty: string
+  }>
+  metadata?: {
+    subject: string
+    totalConcepts: number
+    recommendations?: string
+  }
+  pageImages?: Array<{
+    pageIndex: number
+    base64: string
+    mimeType: string
+  }>
+  error?: APIError
+}
+
+/**
+ * Server function to generate flashcards from a PDF and save to database
+ *
+ * This authenticated version:
+ * 1. Extracts and validates the PDF from FormData
+ * 2. Converts PDF pages to images
+ * 3. Extracts thematic information using AI
+ * 4. Creates thematic in database
+ * 5. Generates flashcards using Gemini
+ * 6. Saves flashcards to database
+ * 7. Returns persisted data with IDs
+ *
+ * @requires Authentication via authMiddleware
+ */
+export const generateAndSaveFlashcards = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .inputValidator((data: FormData) => {
+    if (!(data instanceof FormData)) {
+      throw new Error('Expected FormData')
+    }
+
+    const file = data.get('pdf')
+
+    if (!file || !(file instanceof File)) {
+      throw new Error('No PDF file provided')
+    }
+
+    if (file.type !== 'application/pdf') {
+      throw new Error('File must be a PDF')
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error(`File size must be less than ${MAX_FILE_SIZE / 1024 / 1024}MB`)
+    }
+
+    return { file }
+  })
+  .handler(async ({ context, data }): Promise<GenerateAndSaveResponse> => {
+    const startTime = Date.now()
+    const { user } = context as AuthContext
+    const userId = user.id
+
+    // Get client IP for rate limiting
+    const request = getRequest()
+    const clientIP = getClientIP(request)
+    log('info', `=== Starting authenticated flashcard generation for user: ${userId} ===`)
+
+    // Check rate limit
+    const rateLimitResult = checkRateLimit(clientIP)
+    if (!rateLimitResult.allowed) {
+      log(
+        'warn',
+        `Rate limit exceeded for IP: ${clientIP}. Retry after ${rateLimitResult.retryAfter}s`,
+      )
+      return {
+        success: false,
+        error: {
+          code: 'RATE_LIMITED',
+          message: `Trop de requêtes. Veuillez réessayer dans ${rateLimitResult.retryAfter} secondes.`,
+          retryAfter: rateLimitResult.retryAfter,
+        },
+      }
+    }
+
+    // Acquire concurrency slot
+    const releaseSlot = await acquireConcurrencySlot(clientIP)
+    log('info', 'Concurrency slot acquired')
+
+    try {
+      const { file } = data
+      log('info', `Processing file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
+
+      // Step 1: Convert PDF to images
+      log('info', 'Step 1/5: Converting PDF to images...')
+      const pdfStart = Date.now()
+      const buffer = await file.arrayBuffer()
+      const images = await pdfToImages(buffer, { maxPages: MAX_PAGES })
+      log('info', `Step 1/5 completed in ${Date.now() - pdfStart}ms - ${images.length} pages`)
+
+      // Step 2: Extract thematic from first pages
+      log('info', 'Step 2/5: Extracting thematic...')
+      const thematicStart = Date.now()
+      const thematicData = await extractThematicFromImages(images.slice(0, 2))
+      log('info', `Step 2/5 completed in ${Date.now() - thematicStart}ms - "${thematicData.name}"`)
+
+      // Step 3: Create thematic in database
+      log('info', 'Step 3/5: Creating thematic in database...')
+      const dbThematicStart = Date.now()
+      const [insertedThematic] = await db
+        .insert(thematics)
+        .values({
+          userId,
+          name: thematicData.name,
+          description: thematicData.description ?? null,
+          color: thematicData.color,
+          icon: thematicData.icon,
+          pdfName: file.name,
+        })
+        .returning()
+      log(
+        'info',
+        `Step 3/5 completed in ${Date.now() - dbThematicStart}ms - ID: ${insertedThematic.id}`,
+      )
+
+      // Step 4: Generate flashcards using Gemini
+      log('info', 'Step 4/5: Generating flashcards with AI...')
+      const aiStart = Date.now()
+      const streamData = await streamFlashcardsFromImages(images)
+      const generationResult = await awaitStreamResult(streamData)
+      log(
+        'info',
+        `Step 4/5 completed in ${Date.now() - aiStart}ms - ${generationResult.flashcards?.length ?? 0} flashcards`,
+      )
+
+      // Step 5: Save flashcards to database
+      log('info', 'Step 5/5: Saving flashcards to database...')
+      const dbFlashcardsStart = Date.now()
+
+      const flashcardsToInsert = (generationResult.flashcards ?? []).map((card) => ({
+        thematicId: insertedThematic.id,
+        userId,
+        front: {
+          question: card.front.question,
+          imageDescription: card.front.imageDescription,
+        },
+        back: {
+          answer: card.back.answer,
+          details: card.back.details,
+          imageDescription: card.back.imageDescription,
+        },
+        category: card.category ?? null,
+        difficulty: card.difficulty ?? 'medium',
+      }))
+
+      const insertedFlashcards = await db.insert(flashcards).values(flashcardsToInsert).returning()
+      log(
+        'info',
+        `Step 5/5 completed in ${Date.now() - dbFlashcardsStart}ms - ${insertedFlashcards.length} saved`,
+      )
+
+      // Prepare page images for response
+      const pageImages = images.map((img, index) => ({
+        pageIndex: index,
+        base64: img.base64,
+        mimeType: img.mimeType,
+      }))
+
+      const totalTime = ((Date.now() - startTime) / 1000).toFixed(2)
+      log('info', `=== Generation completed successfully in ${totalTime}s ===`)
+
+      return {
+        success: true,
+        thematic: {
+          id: insertedThematic.id,
+          name: insertedThematic.name,
+          description: insertedThematic.description,
+          color: insertedThematic.color,
+          icon: insertedThematic.icon,
+          pdfName: insertedThematic.pdfName,
+        },
+        flashcards: insertedFlashcards.map((card) => ({
+          id: card.id,
+          front: card.front,
+          back: card.back,
+          category: card.category,
+          difficulty: card.difficulty,
+        })),
+        metadata: generationResult.metadata,
+        pageImages,
+      }
+    } catch (error) {
+      const totalTime = ((Date.now() - startTime) / 1000).toFixed(2)
+      log('error', `=== Generation failed after ${totalTime}s ===`, error)
+      return {
+        success: false,
+        error: mapErrorToAPIError(error),
+      }
+    } finally {
+      releaseSlot()
+      log('info', 'Concurrency slot released')
     }
   })

@@ -1,6 +1,12 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { generateObject, streamObject } from 'ai'
+import { generateObject, generateText, streamObject } from 'ai'
 import { FLASHCARD_SYSTEM_PROMPT } from './prompts/flashcard-generator'
+import {
+  DEFAULT_THEMATIC,
+  parseThematicResponse,
+  THEMATIC_EXTRACTION_PROMPT,
+  type ThematicExtraction,
+} from './prompts/thematic-extractor'
 import { type GenerationResult, GenerationResultSchema } from './types/flashcard'
 
 /**
@@ -328,4 +334,61 @@ export function estimateTokenUsage(imageCount: number, avgSizeKB = 100): number 
   const tokensPerTile = 258
 
   return imageCount * tilesPerImage * tokensPerTile
+}
+
+/**
+ * Extracts thematic information from PDF page images using Gemini
+ *
+ * @param images - First 1-2 pages of the PDF as images
+ * @returns Extracted thematic information (name, description, color, icon)
+ */
+export async function extractThematicFromImages(
+  images: { base64: string; mimeType: 'image/jpeg' }[],
+): Promise<ThematicExtraction> {
+  const startTime = Date.now()
+  log('info', `Starting thematic extraction with ${images.length} images`)
+
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    log('warn', 'API key missing, using default thematic')
+    return DEFAULT_THEMATIC
+  }
+
+  if (images.length === 0) {
+    log('warn', 'No images provided, using default thematic')
+    return DEFAULT_THEMATIC
+  }
+
+  try {
+    // Build content with only first 1-2 pages for efficiency
+    const content: Array<
+      { type: 'text'; text: string } | { type: 'image'; image: string; mimeType: 'image/jpeg' }
+    > = [
+        {
+          type: 'text',
+          text: 'Analyse ces pages et extrait la thématique principale. Retourne UNIQUEMENT du JSON valide.',
+        },
+      ]
+
+    for (const img of images.slice(0, 2)) {
+      content.push({
+        type: 'image',
+        image: img.base64,
+        mimeType: img.mimeType,
+      })
+    }
+
+    const result = await generateText({
+      model,
+      system: THEMATIC_EXTRACTION_PROMPT,
+      messages: [{ role: 'user', content }],
+    })
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2)
+    log('info', `Thematic extraction completed in ${duration}s`)
+
+    return parseThematicResponse(result.text)
+  } catch (error) {
+    log('error', 'Thematic extraction failed, using default', error)
+    return DEFAULT_THEMATIC
+  }
 }

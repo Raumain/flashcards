@@ -2,6 +2,24 @@
 # Use for local development and easy deployment
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: medflash-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: medflash
+      POSTGRES_PASSWORD: medflash_secure_password
+      POSTGRES_DB: medflash
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medflash"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   medflash:
     build:
       context: .
@@ -14,8 +32,12 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://medflash:medflash_secure_password@postgres:5432/medflash
     env_file:
       - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -39,3 +61,6 @@ services:
         reservations:
           cpus: "0.5"
           memory: 512M
+
+volumes:
+  postgres_data:

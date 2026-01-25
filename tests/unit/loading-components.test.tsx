@@ -128,8 +128,8 @@ describe('Loading Components', () => {
 			expect(bar?.getAttribute('style')).toContain('100%')
 		})
 
-		it('should show label when showLabel is true', () => {
-			render(<ProgressBar progress={75} showLabel />)
+		it('should show label when showPercentage is true', () => {
+			render(<ProgressBar progress={75} showPercentage />)
 			const label = screen.getByText('75%')
 			expect(label).toBeDefined()
 		})

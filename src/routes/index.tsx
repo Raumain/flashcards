@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { FlashcardGrid } from '~/components/flashcards'
 import { GenerationProgress, type GenerationStep } from '~/components/generation'
@@ -10,6 +10,7 @@ import {
 	SkeletonMetadata,
 } from '~/components/ui'
 import { PDFDropzone } from '~/components/upload'
+import { useSession } from '~/lib/auth-client'
 import type { Flashcard, GenerationMetadata, PageImage } from '~/lib/types/flashcard'
 
 /**
@@ -46,6 +47,10 @@ export const Route = createFileRoute('/')({
 })
 
 function Home() {
+	// Auth state
+	const { data: session } = useSession()
+	const isAuthenticated = !!session?.user
+
 	// Core state
 	const [appState, setAppState] = useState<AppState>('idle')
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -59,6 +64,7 @@ function Home() {
 	const [error, setError] = useState<string | null>(null)
 	const [isRetrying, setIsRetrying] = useState(false)
 	const [isLoadingResults, setIsLoadingResults] = useState(false)
+	const [savedThematicId, setSavedThematicId] = useState<string | null>(null)
 
 	// Refs for cancellation and retry
 	const abortControllerRef = useRef<AbortController | null>(null)
@@ -82,6 +88,7 @@ function Home() {
 		setMetadata(null)
 		setStreamingText('')
 		setError(null)
+		setSavedThematicId(null)
 		isProcessingRef.current = false
 		if (debounceTimeoutRef.current) {
 			clearTimeout(debounceTimeoutRef.current)
@@ -203,30 +210,100 @@ function Home() {
 					return
 				}
 
-				// Call the non-streaming server function to get pageImages
-				const { generateFlashcards } = await import('~/server/functions/generate')
-
+				// Call the appropriate server function based on auth status
 				setStreamingText(
 					(prev) =>
 						`${prev}Analyse du contenu médical avec l'IA...\nGénération des flashcards...\n`,
 				)
 
-				// Get the complete result with page images
-				// Wrap in a race with abort signal to enable cancellation
-				const result = await Promise.race([
-					generateFlashcards({ data: formData }),
-					new Promise<never>((_, reject) => {
-						// Check if already aborted
-						if (signal.aborted) {
-							reject(new DOMException('Generation cancelled by user', 'AbortError'))
-							return
+				let result: {
+					success: boolean
+					data?: {
+						flashcards: Flashcard[]
+						metadata: GenerationMetadata
+						pageImages?: PageImage[]
+					}
+					thematic?: { id: string }
+					flashcards?: Array<{
+						id: string
+						front: { question: string; imageDescription?: string }
+						back: { answer: string; details?: string; imageDescription?: string }
+						category: string | null
+						difficulty: string
+					}>
+					metadata?: { subject: string; totalConcepts: number; recommendations?: string }
+					pageImages?: Array<{ pageIndex: number; base64: string; mimeType: string }>
+					error?: { message: string }
+				}
+
+				if (isAuthenticated) {
+					// Authenticated: use generateAndSaveFlashcards (persists to DB)
+					const { generateAndSaveFlashcards } = await import('~/server/functions/generate')
+					const authResult = await Promise.race([
+						generateAndSaveFlashcards({ data: formData }),
+						new Promise<never>((_, reject) => {
+							if (signal.aborted) {
+								reject(new DOMException('Generation cancelled by user', 'AbortError'))
+								return
+							}
+							signal.addEventListener('abort', () => {
+								reject(new DOMException('Generation cancelled by user', 'AbortError'))
+							})
+						}),
+					])
+
+					// Transform authenticated response to common format
+					if (authResult.success && authResult.flashcards) {
+						setSavedThematicId(authResult.thematic?.id ?? null)
+						result = {
+							success: true,
+							data: {
+								flashcards: authResult.flashcards.map((f) => ({
+									id: f.id,
+									front: {
+										question: f.front.question,
+										imageDescription: f.front.imageDescription,
+									},
+									back: {
+										answer: f.back.answer,
+										details: f.back.details,
+										imageDescription: f.back.imageDescription,
+									},
+									category: f.category ?? 'General',
+									difficulty: f.difficulty as 'easy' | 'medium' | 'hard',
+								})),
+								metadata: authResult.metadata ?? {
+									subject: 'Unknown',
+									totalConcepts: authResult.flashcards.length,
+								},
+								pageImages: authResult.pageImages?.map((p) => ({
+									...p,
+									mimeType: p.mimeType as 'image/jpeg',
+								})),
+							},
 						}
-						// Listen for future abort
-						signal.addEventListener('abort', () => {
-							reject(new DOMException('Generation cancelled by user', 'AbortError'))
-						})
-					}),
-				])
+					} else {
+						result = {
+							success: false,
+							error: authResult.error ?? { message: 'Erreur inconnue' },
+						}
+					}
+				} else {
+					// Anonymous: use generateFlashcards (no persistence)
+					const { generateFlashcards } = await import('~/server/functions/generate')
+					result = await Promise.race([
+						generateFlashcards({ data: formData }),
+						new Promise<never>((_, reject) => {
+							if (signal.aborted) {
+								reject(new DOMException('Generation cancelled by user', 'AbortError'))
+								return
+							}
+							signal.addEventListener('abort', () => {
+								reject(new DOMException('Generation cancelled by user', 'AbortError'))
+							})
+						}),
+					])
+				}
 
 				// Double-check cancellation after await (in case abort happened during the call)
 				if (signal.aborted) {
@@ -235,20 +312,24 @@ function Home() {
 				}
 
 				if (!result.success) {
-					throw new Error(result.error.message)
+					throw new Error(result.error?.message ?? 'Erreur inconnue')
+				}
+
+				if (!result.data) {
+					throw new Error('Aucune donnée reçue')
 				}
 
 				// Set all data including page images
 				setFlashcards(result.data.flashcards)
 				setMetadata(result.data.metadata)
 				if (result.data.pageImages) {
-					setPageImages(result.data.pageImages)
+					setPageImages(result.data.pageImages as PageImage[])
 				}
 
 				// Final update
 				setStreamingText(
 					(prev) =>
-						`${prev}✓ Terminé : ${result.data.flashcards.length} flashcards générées à partir de ${result.data.metadata.totalConcepts} concepts\n`,
+						`${prev}✓ Terminé : ${result.data?.flashcards.length ?? 0} flashcards générées à partir de ${result.data?.metadata.totalConcepts ?? 0} concepts\n`,
 				)
 				setAppState('complete')
 				setIsLoadingResults(false)
@@ -267,7 +348,7 @@ function Home() {
 				isProcessingRef.current = false
 			}
 		},
-		[resetState],
+		[resetState, isAuthenticated],
 	)
 
 	/**
@@ -358,6 +439,18 @@ function Home() {
 						<h2 id="upload-section" className="sr-only">
 							Télécharger un PDF
 						</h2>
+						{!isAuthenticated && (
+							<div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+								<p className="text-sm text-amber-800">
+									<span className="font-medium">Mode anonyme :</span> Vos flashcards ne seront pas
+									sauvegardées.{' '}
+									<Link to="/signin" className="underline hover:text-amber-900">
+										Connectez-vous
+									</Link>{' '}
+									pour les conserver.
+								</p>
+							</div>
+						)}
 						<PDFDropzone
 							onFileSelect={handleFileSelect}
 							isUploading={isUploading}
@@ -425,6 +518,14 @@ function Home() {
 				{isComplete && !isLoadingResults && flashcards.length > 0 && (
 					<div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
 						<DownloadButton flashcards={flashcards} pageImages={pageImages} />
+						{isAuthenticated && savedThematicId && (
+							<Link
+								to="/dashboard/flashcards"
+								className="px-6 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2"
+							>
+								Voir dans le dashboard →
+							</Link>
+						)}
 						<button
 							type="button"
 							onClick={resetState}
